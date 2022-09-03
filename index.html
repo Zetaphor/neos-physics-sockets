@@ -7,12 +7,28 @@
   </head>
 
   <body>
+    <h1>Neos Physics Engine</h1>
     <p>
       Websocket Status:
       <span id="websocketStatus">Disconnected</span>
     </p>
-    <h3>Websocket Output:</h3>
-    <p id="websocketOutput"></p>
+    <div id="websocketOutputContainer" style="display:none">
+      <h3>Websocket Output:</h3>
+      <p id="websocketOutput"></p>
+    </div>
+    <div id="simluationStatusContainer" style="display:none">
+      <h3>Simulation Status: <span id="simulationStatus">Paused</span></h3>
+      <p>Total Bodies: <span id="simulationTotalBodies">0</span></p>
+    </div>
+    <p id="websocketError" style="display:none">There was an error connecting to the websocket server</p>
+    <div style="display:none" id="simulationControls">
+      <p><a href="#" onclick="stopWorld()">Pause Simulation</a></p>      
+      <p><a href="#" onclick="resumeWorld()">Resume Simulation</a></p>      
+      <p><a href="#" onclick="resetWorld()">Reset Simulation</a></p>      
+      <p><a href="#" onclick="addBodyFromString('addSphere|5|0,0,10|0,0,0,0|1')">Create Sphere</a></p>      
+      <p><a href="#" onclick="addBodyFromString('addCylinder|5|0,0,10|0,0,0,0|1')">Create Cylinder</a></p>      
+      <p><a href="#" onclick="addBodyFromString('addBox|5|0,0,10|0,0,0,0|1,1,1')">Create Box</a></p>      
+    </div>
     <script type="text/javascript" src="cannon.min.js"></script>
     <script type="text/javascript" src="engine.js"></script>
     <script type="text/javascript" src="websockets.js"></script>
