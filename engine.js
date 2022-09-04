@@ -22,6 +22,9 @@ function buildWorld() {
 function initWorld() {
   world = new CANNON.World();
   world.gravity.set(0, 0, -9.82); // m/s²
+  world.broadphase = new CANNON.NaiveBroadphase();
+  world.solver.iterations = 5;  
+  world.solver.tolerance = 0.001;
   updateSimulationStatus("Running");
 }
 
@@ -37,16 +40,28 @@ function stopWorld() {
   updateSimulationStatus("Paused");
 }
 
-function resetWorld() {
-  for (var i = 0; i < world.bodies.length; i++) {
-    const body = world.bodies[i];
+function resetBody(body) {
     body.position.copy(body.initPosition);
     body.velocity.copy(body.initVelocity);
     if (body.initAngularVelocity) {
       body.angularVelocity.copy(body.initAngularVelocity);
       body.quaternion.copy(body.initQuaternion);
+    }  
+}
+
+function resetWorld() {
+  runSimulation = false;
+  let timeout = setTimeout(function () {
+    for (var i = 0; i < world.bodies.length; i++) {
+      const body = world.bodies[i];
+      if (body.shapes[0].type === 2) continue;
+      world.remove(body);
     }
-  }
+    clearTimeout(timeout);
+    runSimulation = true;
+    console.log('Reset');
+  }, 1000);
+
 }
 
 function createBody(type, mass, position, rotation, scale) {
@@ -55,7 +70,7 @@ function createBody(type, mass, position, rotation, scale) {
   else if (type === 'cylinder') createCylinder(mass, position, rotation, scale);
 }
 
-function removeBody(id) {
+function removeBodyById(id) {
   for (let i = 0; i < world.bodies.length; i++) {
     const body = world.bodies[i];
     if (world.bodies[i].id === id) {
@@ -70,7 +85,8 @@ function createSphere(mass, position, rotation, radius) {
     mass: mass, // kg
     position: position, // m
     shape: new CANNON.Sphere(radius),
-    quaternion: rotation
+    quaternion: rotation,
+    collisionFilterGroup: 1
   });
   world.addBody(sphereBody);
   console.log('Create Sphere:', sphereBody);   
@@ -81,7 +97,8 @@ function createBox(mass, position, rotation, scale) {
     mass: mass,
     shape: new CANNON.Box(scale),
     position: position,
-    quaternion: rotation
+    quaternion: rotation,
+    collisionFilterGroup: 1
   });
   world.addBody(boxBody);
   console.log('Create Box:', boxBody); 
@@ -93,7 +110,8 @@ function createCylinder(mass, position, rotation, scale) {
     mass: mass,
     shape: new CANNON.Cylinder(scale, scale, scale * 2.2, 10),
     position: position,
-    quaternion: rotation
+    quaternion: rotation,
+    collisionFilterGroup: 1
   });
   world.addBody(cylinderBody);
   console.log('Create Cylinder:', cylinderBody); 
@@ -103,6 +121,7 @@ function createPlane() {
   let groundBody = new CANNON.Body({
     mass: 0, // mass == 0 makes the body static
     shape: new CANNON.Plane(),
+    collisionFilterGroup: 1
   });
   groundBody.position.set(0, 0, 0);
   world.addBody(groundBody);

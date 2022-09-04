@@ -83,4 +83,8 @@ function removeBodyFromString(input) {
   console.log('removeBody', input);
 }
 
+function sendRemoveBodyById(id) {
+  websocket.send(`remove|${id}`);
+}
+
 window.addEventListener("load", init, false);
