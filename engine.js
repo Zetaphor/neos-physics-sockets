@@ -26,7 +26,7 @@ window.addEventListener("worldUpdate", function () {
     if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
     sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
   }
-  if (world.bodies.length !== lastBodyCount) sockets.updateSimulationBodyCount(world.bodies.length);
+  // if (world.bodies.length !== lastBodyCount) sockets.updateSimulationBodyCount(world.bodies.length);
 });
 
 sockets.addEventListener("resetWorld", function () {
@@ -34,8 +34,10 @@ sockets.addEventListener("resetWorld", function () {
   resetWorld();
 });
 
-sockets.addEventListener("createBody", function (body) {
-  console.log(createBody(body.type, body.mass, body.position, body.rotation, body.scale));
+sockets.addEventListener("createBody", function (ev) {
+  const body = ev.detail;
+  console.log(body);
+  createBody(body.type, body.mass, body.position, body.rotation, body.scale);
   console.log("Created body from websocket");
 });
 
@@ -62,27 +64,9 @@ sockets.addEventListener("resumeWorld", function () {
 });
 
 function createBody(type, mass, position, rotation, scale) {
-  if (type === "box")
-    createBox(
-      mass,
-      new CANNON.Vec3(position.x, position.y, position.z),
-      new CANNON.quanternion(rotation.x, rotation.y, rotation.z, rotation.w),
-      new CANNON.Vec3(scale.x, scale.y, scale.z)
-    );
-  else if (type === "sphere")
-    createSphere(
-      mass,
-      new CANNON.Vec3(position.x, position.y, position.z),
-      new CANNON.quanternion(rotation.x, rotation.y, rotation.z, rotation.w),
-      scale
-    );
-  else if (type === "cylinder")
-    createCylinder(
-      mass,
-      new CANNON.Vec3(position.x, position.y, position.z),
-      new CANNON.quanternion(rotation.x, rotation.y, rotation.z, rotation.w),
-      scale
-    );
+  if (type === "box") createBox(mass, position, rotation, scale);
+  else if (type === "sphere") createSphere(mass, position, rotation, scale);
+  else if (type === "cylinder") createCylinder(mass, position, rotation, scale);
 }
 
 function createSphere(mass, position, rotation, radius) {

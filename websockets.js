@@ -17,7 +17,6 @@ class NeosPhysicsSockets extends EventTarget {
     this.socketReady = true;
     document.getElementById("websocketStatus").innerHTML = "Connected";
     document.getElementById("websocketOutputContainer").style.display = "block";
-    buildWorld();
   };
 
   socketError = (ev) => {
@@ -35,11 +34,12 @@ class NeosPhysicsSockets extends EventTarget {
   };
 
   socketMessage = (ev) => {
-    if (ev.data === "pause") this.receivedWorldPause();
-    else if (ev.data === "resume") resumeWorld();
-    else if (ev.data === "reset") resetWorld();
-    else if (ev.data.startsWith("add|")) addBodyFromString(ev.data);
-    else if (ev.data.startsWith("remove|")) removeBodyFromString(ev.data);
+    // if (!ev.data.startsWith("totalBodies")) console.log(ev);
+    if (ev.data === "neosPause") this.receivedWorldPause();
+    else if (ev.data === "neosResume") this.receivedWorldResume();
+    else if (ev.data === "neosReset") this.receivedWorldReset();
+    else if (ev.data.startsWith("add")) this.addBodyFromString(ev.data);
+    else if (ev.data.startsWith("remove")) this.removeBodyFromString(ev.data);
     else document.getElementById("websocketOutput").innerHTML = ev.data;
   };
 
@@ -83,13 +83,15 @@ class NeosPhysicsSockets extends EventTarget {
   removeBodyFromString = (input) => {
     // remove|1
     this.dispatchEvent("removeBody", {
-      id: parseInt(input.split("|")[1]),
+      detail: {
+        id: parseInt(input.split("|")[1]),
+      },
     });
   };
 
   addBodyFromString = (input) => {
     // addBox|mass|position|rotation|scale
-    inputArgs = input.split("|");
+    const inputArgs = input.split("|");
     const bodyType = inputArgs[0].split("add")[1].toLowerCase();
     const mass = parseFloat(inputArgs[1]);
 
@@ -105,20 +107,23 @@ class NeosPhysicsSockets extends EventTarget {
     };
 
     let scale = 0;
-    console.log(inputArgs);
     if (bodyType === "cylinder" || bodyType === "sphere") scale = parseFloat(inputArgs[4]);
     else {
       const scaleArgs = inputArgs[4].split(",");
       scale = { x: parseFloat(positionArgs[0]), y: parseFloat(positionArgs[1]), z: parseFloat(positionArgs[2]) };
     }
 
-    this.dispatchEvent(new CustomEvent("createBody"), {
-      type: bodyType,
-      mass: mass,
-      position: position,
-      rotation: rotation,
-      scale: scale,
-    });
+    this.dispatchEvent(
+      new CustomEvent("createBody", {
+        detail: {
+          type: bodyType,
+          mass: mass,
+          position: position,
+          rotation: rotation,
+          scale: scale,
+        },
+      })
+    );
   };
 }
 
