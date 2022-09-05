@@ -10,6 +10,8 @@ import { bodyToMesh } from "/libs/three-conversion-utils.js";
  * Engine utility class. If you want to learn how to connect cannon.js with three.js, please look at the examples/threejs_* instead.
  */
 class Engine extends CANNON.EventTarget {
+  renderWidth = 1600;
+  renderHeight = 800;
   sceneFolder;
   scenes = {};
   listeners = {};
@@ -23,6 +25,7 @@ class Engine extends CANNON.EventTarget {
   gui;
   smoothie;
   smoothieCanvas;
+  bodiesStatsPanel;
 
   renderModes = ["solid", "wireframe"];
 
@@ -84,7 +87,7 @@ class Engine extends CANNON.EventTarget {
     this.animate();
 
     // Attach listeners
-    window.addEventListener("resize", this.resize);
+    // window.addEventListener("resize", this.resize);
   }
 
   initGui = () => {
@@ -117,9 +120,9 @@ class Engine extends CANNON.EventTarget {
     });
 
     // World folder
-    const worldFolder = this.gui.addFolder("Simulation");
+    const simulationFolder = this.gui.addFolder("Simulation");
     // Pause
-    worldFolder.add(this.settings, "paused").onChange((paused) => {
+    simulationFolder.add(this.settings, "paused").onChange((paused) => {
       if (paused) {
         this.smoothie.stop();
       } else {
@@ -127,38 +130,38 @@ class Engine extends CANNON.EventTarget {
       }
       this.resetCallTime = true;
     });
-    worldFolder.add(this.settings, "stepFrequency", 10, 60 * 10, 10);
-    worldFolder.add(this.settings, "maxSubSteps", 1, 50, 1);
+    simulationFolder.add(this.settings, "stepFrequency", 10, 60 * 10, 10);
+    simulationFolder.add(this.settings, "maxSubSteps", 1, 50, 1);
     const maxg = 100;
-    worldFolder.add(this.settings, "gx", -maxg, maxg).onChange((gx) => {
+    simulationFolder.add(this.settings, "gx", -maxg, maxg).onChange((gx) => {
       if (isNaN(gx)) {
         return;
       }
 
       this.world.gravity.set(gx, this.settings.gy, this.settings.gz);
     });
-    worldFolder.add(this.settings, "gy", -maxg, maxg).onChange((gy) => {
+    simulationFolder.add(this.settings, "gy", -maxg, maxg).onChange((gy) => {
       if (isNaN(gy)) {
         return;
       }
 
       this.world.gravity.set(this.settings.gx, gy, this.settings.gz);
     });
-    worldFolder.add(this.settings, "gz", -maxg, maxg).onChange((gz) => {
+    simulationFolder.add(this.settings, "gz", -maxg, maxg).onChange((gz) => {
       if (isNaN(gz)) {
         return;
       }
 
       this.world.gravity.set(this.settings.gx, this.settings.gy, gz);
     });
-    worldFolder.add(this.settings, "quatNormalizeSkip", 0, 50, 1).onChange((skip) => {
+    simulationFolder.add(this.settings, "quatNormalizeSkip", 0, 50, 1).onChange((skip) => {
       if (isNaN(skip)) {
         return;
       }
 
       this.world.quatNormalizeSkip = skip;
     });
-    worldFolder.add(this.settings, "quatNormalizeFast").onChange((fast) => {
+    simulationFolder.add(this.settings, "quatNormalizeFast").onChange((fast) => {
       this.world.quatNormalizeFast = !!fast;
     });
 
@@ -249,7 +252,15 @@ class Engine extends CANNON.EventTarget {
 
   initStats = () => {
     this.stats = new Stats();
-    document.body.appendChild(this.stats.domElement);
+
+    this.bodiesStatsPanel = this.stats.addPanel(new Stats.Panel("Bodies", "#fffd00", "#838200"));
+
+    const panels = [0, 1, 2, 3]; // 0: fps, 1: ms, 2: mb
+    Array.from(this.stats.dom.children).forEach((child, index) => {
+      child.style.display = panels.includes(index) ? "inline-block" : "none";
+    });
+    document.getElementById("canvasContainer").appendChild(this.stats.dom);
+    // document.body.appendChild(this.stats.domElement);
   };
 
   /**
@@ -622,6 +633,7 @@ class Engine extends CANNON.EventTarget {
       this.updateVisuals();
       this.renderer.render(this.scene, this.camera);
     }
+    this.bodiesStatsPanel.update(this.bodies.length, 150);
     this.controls.update();
     this.stats.update();
     window.dispatchEvent(new CustomEvent("worldUpdate"));
@@ -654,26 +666,25 @@ class Engine extends CANNON.EventTarget {
   };
 
   resize = () => {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.aspect = this.renderWidth / this.renderHeight;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(this.renderHeight, this.renderWidth);
   };
 
   initThree = () => {
     // Camera
-    this.camera = new THREE.PerspectiveCamera(24, window.innerWidth / window.innerHeight, 5, 2000);
+    this.camera = new THREE.PerspectiveCamera(24, this.renderWidth / this.renderHeight, 5, 2000);
 
     this.camera.position.set(0, 20, 90);
     this.camera.lookAt(0, 0, 0);
 
     // Scene
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.Fog(0x222222, 1000, 2000);
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(this.renderer.domElement);
+    this.renderer.setSize(this.renderWidth, this.renderHeight);
+    document.getElementById("canvasContainer").appendChild(this.renderer.domElement);
 
     // Lights
     this.ambientLight = new THREE.AmbientLight(0xffffff, 1);
@@ -692,13 +703,13 @@ class Engine extends CANNON.EventTarget {
 
   initSmoothie = () => {
     this.smoothieCanvas = document.createElement("canvas");
-    this.smoothieCanvas.width = window.innerWidth;
-    this.smoothieCanvas.height = window.innerHeight;
-    this.smoothieCanvas.style.opacity = 0.5;
+    this.smoothieCanvas.width = this.renderWidth;
+    this.smoothieCanvas.height = this.renderHeight;
+    this.smoothieCanvas.style.opacity = 0.7;
     this.smoothieCanvas.style.position = "absolute";
     this.smoothieCanvas.style.top = "0px";
     this.smoothieCanvas.style.zIndex = 1;
-    document.body.appendChild(this.smoothieCanvas);
+    document.getElementById("canvasContainer").appendChild(this.smoothieCanvas);
 
     this.smoothie = new SmoothieChart({
       labelOffsetY: 50,
