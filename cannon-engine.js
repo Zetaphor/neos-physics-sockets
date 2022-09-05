@@ -482,6 +482,7 @@ class Engine extends CANNON.EventTarget {
 
   changeScene = (name) => {
     this.dispatchEvent({ type: "destroy" });
+    window.dispatchEvent(new CustomEvent("worldReset"));
 
     // unbind all listeners
     Object.keys(this.listeners).forEach((event) => {
@@ -623,7 +624,7 @@ class Engine extends CANNON.EventTarget {
     }
     this.controls.update();
     this.stats.update();
-    this.dispatchEvent({ type: "update" });
+    window.dispatchEvent(new CustomEvent("worldUpdate"));
   };
 
   lastCallTime = 0;

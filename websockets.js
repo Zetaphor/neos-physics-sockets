@@ -42,7 +42,7 @@ class NeosPhysicsSockets extends EventTarget {
   };
 
   stopWorld() {
-    dispatchEvent(new Event("stop"));
+    this.dispatchEvent(new CustomEvent("stop"));
   }
 
   updateSimulationStatus = (status) => {
@@ -66,7 +66,7 @@ class NeosPhysicsSockets extends EventTarget {
   };
 
   receivedWorldReset = () => {
-    dispatchEvent(new Event("reset"));
+    this.dispatchEvent(new CustomEvent("reset"));
   };
 
   addBodyFromString = (input) => {
@@ -94,7 +94,7 @@ class NeosPhysicsSockets extends EventTarget {
       scale = { x: parseFloat(positionArgs[0]), y: parseFloat(positionArgs[1]), z: parseFloat(positionArgs[2]) };
     }
 
-    dispatchEvent(new Event("createBody"), {
+    this.dispatchEvent(new CustomEvent("createBody"), {
       type: bodyType,
       mass: mass,
       position: position,

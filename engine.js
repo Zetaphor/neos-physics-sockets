@@ -14,17 +14,17 @@ const bodyTypes = {
   16: "cylinder", // Internaly this is a convexpolyhedron
 };
 
-cannonEngine.addEventListener("destroy", function () {
+window.addEventListener("worldReset", function () {
   sockets.sendWorldReset();
   console.log("Reset world");
 });
 
-cannonEngine.addEventListener("update", function () {
-  // for (let i = 0; i < world.bodies.length; i++) {
-  //   const body = world.bodies[i];
-  //   if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
-  //   sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
-  // }
+window.addEventListener("worldUpdate", function () {
+  for (let i = 0; i < world.bodies.length; i++) {
+    const body = world.bodies[i];
+    if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
+    sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
+  }
   // updateSimulationBodyCount(world.bodies.length);
 });
 
