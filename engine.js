@@ -73,52 +73,30 @@ function createBody(type, mass, position, rotation, scale) {
 }
 
 function createSphere(mass, position, rotation, radius) {
-  console.log(mass, position, rotation, radius);
-
   const sphereShape = new CANNON.Sphere(radius);
-  const sphereBody = new CANNON.Body({
-    mass: mass,
-    position: new CANNON.Vec3(position.x, position.y, position.z),
-    quaternion: rotation,
-  });
+  const sphereBody = new CANNON.Body({ mass: mass });
+  sphereBody.position.set(position.x, position.y, position.z);
   sphereBody.addShape(sphereShape);
   world.addBody(sphereBody);
   cannonEngine.addVisual(sphereBody);
-
-  // let sphereBody = new CANNON.Body({
-  //   mass: mass, // kg
-  //   position: position, // m
-  //   shape: new CANNON.Sphere(radius),
-  //   quaternion: rotation,
-  //   collisionFilterGroup: 1,
-  // });
-  // world.addBody(sphereBody);
-  // cannonEngine.addVisual(sphereBody);
   console.log("Create Sphere:", sphereBody);
 }
 
 function createBox(mass, position, rotation, scale) {
-  let boxBody = new CANNON.Body({
-    mass: mass,
-    shape: new CANNON.Box(new CANNON.Vec3(scale.x, scale.y, scale.z)),
-    position: position,
-    quaternion: rotation,
-    collisionFilterGroup: 1,
-  });
+  const boxShape = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
+  let boxBody = new CANNON.Body({ mass: 5 });
+  boxBody.position.set(position.x, position.y, position.z);
+  boxBody.addShape(boxShape);
   world.addBody(boxBody);
   cannonEngine.addVisual(boxBody);
   console.log("Create Box:", boxBody);
 }
 
 function createCylinder(mass, position, rotation, scale) {
-  console.log(mass, position, rotation, scale);
-  let cylinderBody = new CANNON.Body({
-    mass: mass,
-    shape: new CANNON.Cylinder(scale, scale, scale * 2.2, 10),
-    position: position,
-    quaternion: rotation,
-    collisionFilterGroup: 1,
-  });
+  const cylinderShape = new CANNON.Cylinder(scale, scale, scale * 2.2, 10);
+  let cylinderBody = new CANNON.Body({ mass: mass });
+  cylinderBody.position.set(position.x, position.y, position.z);
+  cylinderBody.addShape(cylinderShape);
   world.addBody(cylinderBody);
   cannonEngine.addVisual(cylinderBody);
   console.log("Create Cylinder:", cylinderBody);
@@ -130,14 +108,24 @@ function setupCreateMenu() {
   sceneMenuFolder.add(
     {
       ["Create Sphere"]: () =>
-        createSphere(5, { x: Math.random(10), y: 10, z: Math.random(10) }, { x: 0, y: 0, z: 0, w: 0 }, 1),
+        createSphere(
+          5,
+          { x: Math.random(10), y: Math.random(10) + 10, z: Math.random(10) },
+          { x: 0, y: 0, z: 0, w: 0 },
+          1
+        ),
     },
     "Create Sphere"
   );
   sceneMenuFolder.add(
     {
       ["Create Cylinder"]: () =>
-        createCylinder(5, { x: Math.random(10), y: 10, z: Math.random(10) }, { x: 0, y: 0, z: 0, w: 0 }, 1),
+        createCylinder(
+          5,
+          { x: Math.random(10), y: Math.random(10) + 10, z: Math.random(10) },
+          { x: 0, y: 0, z: 0, w: 0 },
+          1
+        ),
     },
     "Create Cylinder"
   );
@@ -146,7 +134,7 @@ function setupCreateMenu() {
       ["Create Box"]: () =>
         createBox(
           5,
-          { x: Math.random(10), y: 10, z: Math.random(10) },
+          { x: Math.random(10), y: Math.random(10) + 10, z: Math.random(10) },
           { x: 0, y: 0, z: 0, w: 0 },
           { x: 1, y: 1, z: 1 }
         ),
@@ -176,14 +164,14 @@ function setupWorld(cannonEngine) {
 
   // Tweak contact properties.
   // Contact stiffness - use to make softer/harder contacts
-  world.defaultContactMaterial.contactEquationStiffness = 5e6;
+  world.defaultContactMaterial.contactEquationStiffness = 1e7;
 
   // Stabilization time in number of timesteps
-  world.defaultContactMaterial.contactEquationRelaxation = 10;
+  world.defaultContactMaterial.contactEquationRelaxation = 4;
 
   // Since we have many bodies and they don't move very much, we can use the less accurate quaternion normalization
-  world.quatNormalizeFast = true;
-  world.quatNormalizeSkip = 3; // ...and we do not have to normalize every step.
+  // world.quatNormalizeFast = true;
+  // world.quatNormalizeSkip = 3; // ...and we do not have to normalize every step.
 
   // Static ground plane
   const groundShape = new CANNON.Plane();
