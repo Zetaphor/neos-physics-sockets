@@ -212,27 +212,29 @@ class Engine extends CANNON.EventTarget {
     switch (mode) {
       case "solid":
         this.currentMaterial = this.solidMaterial;
-        this.spotLight.intensity = 1;
-        this.ambientLight.color.setHex(0x222222);
         break;
       case "wireframe":
         this.currentMaterial = this.wireframeMaterial;
-        this.spotLight.intensity = 0;
-        this.ambientLight.color.setHex(0xffffff);
         break;
     }
 
     // set the materials
     this.visuals.forEach((visual) => {
       if (visual.material) {
-        if (mode === "solid") visual.material = new THREE.MeshLambertMaterial({ color: randomMaterialColor() });
-        else visual.material = this.currentMaterial;
+        if (mode === "solid") {
+          if (visual.userData.physicsType == 2) {
+            visual.material = this.currentMaterial;
+          } else visual.material = new THREE.MeshLambertMaterial({ color: this.randomMaterialColor() });
+        } else visual.material = this.currentMaterial;
       }
       visual.traverse((child) => {
         if (child.material) {
           child.material = this.currentMaterial;
-          if (mode === "solid") child.material = new THREE.MeshLambertMaterial({ color: randomMaterialColor() });
-          else child.material = this.currentMaterial;
+          if (mode === "solid") {
+            if (visual.userData.physicsType == 2 || child.userData.physicsType == 2)
+              child.material = this.currentMaterial;
+            else child.material = new THREE.MeshLambertMaterial({ color: this.randomMaterialColor() });
+          } else child.material = this.currentMaterial;
         }
       });
     });
@@ -518,7 +520,7 @@ class Engine extends CANNON.EventTarget {
 
   initGeometryCaches = () => {
     // Material
-    this.materialColor = 0xdddddd;
+    this.materialColor = 0xaaaaaa;
     this.solidMaterial = new THREE.MeshLambertMaterial({ color: this.materialColor });
     //THREE.ColorUtils.adjustHSV( solidMaterial.color, 0, 0, 0.9 );
     this.wireframeMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true });
@@ -653,7 +655,7 @@ class Engine extends CANNON.EventTarget {
     // Camera
     this.camera = new THREE.PerspectiveCamera(24, window.innerWidth / window.innerHeight, 5, 2000);
 
-    this.camera.position.set(0, 20, 30);
+    this.camera.position.set(0, 20, 90);
     this.camera.lookAt(0, 0, 0);
 
     // Scene
@@ -665,29 +667,16 @@ class Engine extends CANNON.EventTarget {
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(this.renderer.domElement);
 
-    this.renderer.setClearColor(this.scene.fog.color, 1);
-
     // Lights
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 1);
     this.scene.add(this.ambientLight);
-
-    this.spotLight = new THREE.SpotLight(0xffffff, 0.9, 0, Math.PI / 8, 1);
-    this.spotLight.position.set(-30, 40, 30);
-    this.spotLight.target.position.set(0, 0, 0);
-
-    this.scene.add(this.spotLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.15);
-    directionalLight.position.set(-30, 40, 30);
-    directionalLight.target.position.set(0, 0, 0);
-    this.scene.add(directionalLight);
 
     // Orbit controls
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.rotateSpeed = 1.0;
     this.controls.zoomSpeed = 1.2;
     this.controls.enableDamping = true;
-    this.controls.enablePan = false;
+    this.controls.enablePan = true;
     this.controls.dampingFactor = 0.2;
     this.controls.minDistance = 10;
     this.controls.maxDistance = 500;
@@ -806,6 +795,7 @@ class Engine extends CANNON.EventTarget {
 
     // get the correspondant three.js mesh
     const mesh = bodyToMesh(body, material);
+    mesh.userData.physicsType = body.type;
 
     this.bodies.push(body);
     this.visuals.push(mesh);
