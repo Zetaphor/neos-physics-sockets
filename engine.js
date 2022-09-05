@@ -38,6 +38,16 @@ sockets.addEventListener("createBody", function (body) {
   console.log("Created body from websocket");
 });
 
+sockets.addEventListener("pause", function () {
+  pauseWorld();
+  console.log("Pause world from websocket");
+});
+
+sockets.addEventListener("resume", function () {
+  resumeWorld();
+  console.log("Resume world from websocket");
+});
+
 function createBody(type, mass, position, rotation, scale) {
   if (type === "box")
     createBox(
@@ -143,6 +153,14 @@ function setupCreateMenu() {
     },
     "Create Box"
   );
+}
+
+function pauseWorld() {
+  cannonEngine.paused = true;
+}
+
+function resumeWorld() {
+  cannonEngine.paused = false;
 }
 
 function resetWorld() {
