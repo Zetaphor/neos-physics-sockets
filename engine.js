@@ -6,6 +6,7 @@ const cannonEngine = new Engine();
 let world;
 const sockets = new NeosPhysicsSockets();
 let sceneMenuFolder;
+let lastBodyCount = 0;
 
 const bodyTypes = {
   1: "sphere",
@@ -25,10 +26,10 @@ window.addEventListener("worldUpdate", function () {
     if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
     sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
   }
-  // updateSimulationBodyCount(world.bodies.length);
+  if (world.bodies.length !== lastBodyCount) sockets.updateSimulationBodyCount(world.bodies.length);
 });
 
-sockets.addEventListener("reset", function () {
+sockets.addEventListener("resetWorld", function () {
   console.log("Reset world from websocket");
   resetWorld();
 });
@@ -38,12 +39,24 @@ sockets.addEventListener("createBody", function (body) {
   console.log("Created body from websocket");
 });
 
-sockets.addEventListener("pause", function () {
+sockets.addEventListener("removeBody", function (id) {
+  for (let i = 0; i < cannonEngine.bodies.length; i++) {
+    const body = cannonEngine.bodies[i];
+    if (body.id === id) {
+      cannonEngine.removeVisual(bodyToKill);
+      world.removeBody(bodyToKill);
+      console.log("Removed body from websocket");
+      break;
+    }
+  }
+});
+
+sockets.addEventListener("pauseWorld", function () {
   pauseWorld();
   console.log("Pause world from websocket");
 });
 
-sockets.addEventListener("resume", function () {
+sockets.addEventListener("resumeWorld", function () {
   resumeWorld();
   console.log("Resume world from websocket");
 });

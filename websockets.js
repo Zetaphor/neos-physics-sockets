@@ -22,35 +22,34 @@ class NeosPhysicsSockets extends EventTarget {
 
   socketError = (ev) => {
     this.socketReady = false;
-    this.stopWorld();
+    this.receivedWorldPause();
+    document.getElementById("websocketOutputContainer").style.display = "none";
     document.getElementById("websocketError").style.display = "block";
   };
 
   socketClose = (ev) => {
     this.socketReady = false;
-    this.stopWorld();
+    this.receivedWorldPause();
+    document.getElementById("websocketOutputContainer").style.display = "none";
     document.getElementById("websocketStatus").innerHTML = "Disconnected";
   };
 
   socketMessage = (ev) => {
-    if (ev.data === "pause") this.stopWorld();
+    if (ev.data === "pause") this.receivedWorldPause();
     else if (ev.data === "resume") resumeWorld();
     else if (ev.data === "reset") resetWorld();
-    else if (ev.data.startsWith("add")) addBodyFromString(ev.data);
-    else if (ev.data.startsWith("remove")) removeBodyFromString(ev.data);
+    else if (ev.data.startsWith("add|")) addBodyFromString(ev.data);
+    else if (ev.data.startsWith("remove|")) removeBodyFromString(ev.data);
     else document.getElementById("websocketOutput").innerHTML = ev.data;
   };
-
-  stopWorld() {
-    this.dispatchEvent(new CustomEvent("stop"));
-  }
 
   updateSimulationStatus = (status) => {
     document.getElementById("simulationStatus").innerHTML = status;
   };
 
   updateSimulationBodyCount = (totalBodies) => {
-    document.getElementById("simulationTotalBodies").innerHTML = totalBodies;
+    if (!this.socketReady) return;
+    this.websocket.send(`totalBodies|${totalBodies}`);
   };
 
   sendPhysicsUpdate = (id, bodyType, position, rotation) => {
@@ -60,13 +59,32 @@ class NeosPhysicsSockets extends EventTarget {
     );
   };
 
+  sendRemoveBody = (id) => {
+    this.websocket.send(`remove|${id}`);
+  };
+
   sendWorldReset = () => {
     if (!this.socketReady) return;
     this.websocket.send("reset");
   };
 
   receivedWorldReset = () => {
-    this.dispatchEvent(new CustomEvent("reset"));
+    this.dispatchEvent(new CustomEvent("resetWorld"));
+  };
+
+  receivedWorldResume() {
+    this.dispatchEvent(new CustomEvent("resumeWorld"));
+  }
+
+  receivedWorldPause() {
+    this.dispatchEvent(new CustomEvent("pauseWorld"));
+  }
+
+  removeBodyFromString = (input) => {
+    // remove|1
+    this.dispatchEvent("removeBody", {
+      id: parseInt(input.split("|")[1]),
+    });
   };
 
   addBodyFromString = (input) => {
@@ -101,12 +119,6 @@ class NeosPhysicsSockets extends EventTarget {
       rotation: rotation,
       scale: scale,
     });
-  };
-
-  offlineStart = () => {
-    document.getElementById("simulationControls").style.display = "block";
-    document.getElementById("simluationStatusContainer").style.display = "block";
-    initWorld();
   };
 }
 

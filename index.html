@@ -5,25 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Physics Test</title>
   </head>
+  <style>
+    html,
+    body {
+      overflow: hidden;
+    }
+
+    p {
+      margin-bottom: 10px;
+    }
+
+    #info {
+      position: absolute;
+      top: 0;
+      left: 0;
+      max-width: 500px;
+      padding: 10px;
+    }
+
+    #websocketOutputContainer {
+      display: none;
+    }
+
+    #websocketError {
+      color: #ff0000;
+      background: #fff;
+      font-weight: bold;
+    }
+
+    #canvasContainer {
+      position: absolute;
+      max-width: 1600px;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      top: 500px;
+    }
+  </style>
 
   <body>
-    <h1>Neos Physics Engine</h1>
-    <p>
+    <div id="canvasContainer"></div>
+    <div id="info">
       Websocket Status:
       <span id="websocketStatus">Disconnected</span>
-    </p>
-    <div id="websocketOutputContainer" style="display: none">
-      <h3>Websocket Output:</h3>
-      <p id="websocketOutput"></p>
-    </div>
-    <div id="simluationStatusContainer" style="display: none">
-      <p>
-        Total Bodies:
-        <span id="simulationTotalBodies">0</span>
+      <p id="websocketOutputContainer">
+        Websocket Output:
+        <span id="websocketOutput"></span>
       </p>
+      <p id="websocketError">There was an error connecting to the websocket server</p>
     </div>
-    <p id="websocketError" style="display: none">There was an error connecting to the websocket server</p>
-
     <script type="module" src="engine.js"></script>
   </body>
 </html>
