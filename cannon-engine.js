@@ -11,8 +11,9 @@ import { bodyToMesh } from "/libs/three-conversion-utils.js";
  */
 class Engine extends CANNON.EventTarget {
   sceneFolder;
-  scenes = [];
+  scenes = {};
   listeners = {};
+  currentScene = 0;
 
   // array used to keep in sync the visuals with the bodies
   // they will have always the same length
@@ -44,6 +45,7 @@ class Engine extends CANNON.EventTarget {
       d: 3,
       scene: 0,
       paused: false,
+      renderPaused: false,
       rendermode: "solid",
       constraints: false,
       contacts: false, // Contact points
@@ -92,6 +94,7 @@ class Engine extends CANNON.EventTarget {
 
     // Render mode
     const renderFolder = this.gui.addFolder("Rendering");
+    renderFolder.add(this.settings, "renderPaused");
     renderFolder.add(this.settings, "rendermode", { Solid: "solid", Wireframe: "wireframe" }).onChange((mode) => {
       this.setRenderMode(mode);
     });
@@ -114,7 +117,7 @@ class Engine extends CANNON.EventTarget {
     });
 
     // World folder
-    const worldFolder = this.gui.addFolder("World");
+    const worldFolder = this.gui.addFolder("Simulation");
     // Pause
     worldFolder.add(this.settings, "paused").onChange((paused) => {
       if (paused) {
@@ -181,6 +184,8 @@ class Engine extends CANNON.EventTarget {
       });
 
     // Scene picker folder
+    this.sceneFolder = this.gui.addFolder("Scenes");
+    this.sceneFolder.open();
   };
 
   updateGui = () => {
@@ -261,8 +266,8 @@ class Engine extends CANNON.EventTarget {
       throw new Error("2nd argument of Demo.addScene(title,initfunc) must be a function!");
     }
 
-    this.scenes.push(initfunc);
-    const index = this.scenes.length - 1;
+    this.scenes[title] = initfunc;
+    this.sceneFolder.add({ [title]: () => this.changeScene(title) }, title);
   };
 
   /**
@@ -289,7 +294,7 @@ class Engine extends CANNON.EventTarget {
       // Interpolated or not?
       let position = body.interpolatedPosition;
       let quaternion = body.interpolatedQuaternion;
-      if (this.settings.paused) {
+      if (this.settings.paused || this.renderPaused) {
         position = body.position;
         quaternion = body.quaternion;
       }
@@ -475,7 +480,7 @@ class Engine extends CANNON.EventTarget {
     this.bboxMeshCache.hideCached();
   };
 
-  resetScene = (n) => {
+  changeScene = (name) => {
     this.dispatchEvent({ type: "destroy" });
 
     // unbind all listeners
@@ -487,11 +492,12 @@ class Engine extends CANNON.EventTarget {
     this.listeners = {};
 
     this.settings.paused = false;
+    this.settings.renderPaused = false;
     this.updateGui();
-    this.buildScene(n);
+    this.buildScene(name);
   };
 
-  buildScene = (n) => {
+  buildScene = (name) => {
     // Remove current bodies
     this.bodies.forEach((body) => this.world.removeBody(body));
 
@@ -504,7 +510,7 @@ class Engine extends CANNON.EventTarget {
     }
 
     // Run the user defined "build scene" function
-    this.scenes[n]();
+    this.scenes[name]();
 
     // Read the newly set data to the gui
     this.settings.iterations = this.world.solver.iterations;
@@ -516,6 +522,7 @@ class Engine extends CANNON.EventTarget {
     this.updateGui();
 
     this.restartGeometryCaches();
+    this.currentScene = name;
   };
 
   initGeometryCaches = () => {
@@ -609,12 +616,12 @@ class Engine extends CANNON.EventTarget {
 
   animate = () => {
     requestAnimationFrame(this.animate);
-    if (!this.settings.paused) {
-      this.updatePhysics();
+    if (!this.settings.paused) this.updatePhysics();
+    if (!this.settings.renderPaused) {
       this.updateVisuals();
+      this.renderer.render(this.scene, this.camera);
     }
     this.controls.update();
-    this.renderer.render(this.scene, this.camera);
     this.stats.update();
     this.dispatchEvent({ type: "update" });
   };
