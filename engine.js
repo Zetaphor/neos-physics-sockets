@@ -1,152 +1,134 @@
-let world, lastTime;
-const fixedTimeStep = 1.0 / 60.0; // seconds
-const maxSubSteps = 3;
-let runSimulation = false;
+import * as CANNON from "/libs/cannon-es.js";
+import { Engine } from "/cannon-engine.js";
+import { NeosPhysicsSockets } from "/websockets.js";
+
+const cannonEngine = new Engine();
+var size = 1;
+var interval;
+const world = cannonEngine.getWorld();
+// const sockets = new NeosPhysicsSockets();
+let sceneMenuFolder;
 
 const bodyTypes = {
-  1: 'sphere',
-  2: 'plane',
-  4: 'box',
-  16: 'cylinder',
+  1: "sphere",
+  2: "plane",
+  4: "box",
+  16: "cylinder", // Internaly this is a convexpolyhedron
 };
 
-const rotationVec = CANNON.Vec3();
+cannonEngine.addEventListener("destroy", function () {
+  // sendWorldReset();
+  console.log("Reset world");
+});
 
-function buildWorld() {
-  initWorld();
-  createPlane();
-  runSimulation = true;
-  update();
-}
-
-function initWorld() {
-  world = new CANNON.World();
-  world.gravity.set(0, 0, -9.82); // m/s²
-  world.broadphase = new CANNON.NaiveBroadphase();
-  world.solver.iterations = 5;  
-  world.solver.tolerance = 0.001;
-  updateSimulationStatus("Running");
-}
-
-function resumeWorld() {
-  lastTime = 0;
-  runSimulation = true;
-  updateSimulationStatus("Running");
-}
-
-function stopWorld() {
-  runSimulation = false;
-  lastTime = 0;
-  updateSimulationStatus("Paused");
-}
-
-function resetBody(body) {
-    body.position.copy(body.initPosition);
-    body.velocity.copy(body.initVelocity);
-    if (body.initAngularVelocity) {
-      body.angularVelocity.copy(body.initAngularVelocity);
-      body.quaternion.copy(body.initQuaternion);
-    }  
-}
-
-function resetWorld() {
-  runSimulation = false;
-  let timeout = setTimeout(function () {
-    for (var i = 0; i < world.bodies.length; i++) {
-      const body = world.bodies[i];
-      if (body.shapes[0].type === 2) continue;
-      world.remove(body);
-    }
-    clearTimeout(timeout);
-    runSimulation = true;
-    console.log('Reset');
-  }, 1000);
-
-}
-
-function createBody(type, mass, position, rotation, scale) {
-  if (type === 'box') createBox(mass, position, rotation, scale);
-  else if (type === 'sphere') createSphere(mass, position, rotation, scale);
-  else if (type === 'cylinder') createCylinder(mass, position, rotation, scale);
-}
-
-function removeBodyById(id) {
-  for (let i = 0; i < world.bodies.length; i++) {
-    const body = world.bodies[i];
-    if (world.bodies[i].id === id) {
-      world.remove(body);
-      break;
-    }
-  }
-}
-
-function createSphere(mass, position, rotation, radius) {
-  let sphereBody = new CANNON.Body({
-    mass: mass, // kg
-    position: position, // m
-    shape: new CANNON.Sphere(radius),
-    quaternion: rotation,
-    collisionFilterGroup: 1
-  });
-  world.addBody(sphereBody);
-  console.log('Create Sphere:', sphereBody);   
-}
-
-function createBox(mass, position, rotation, scale) {
-  let boxBody = new CANNON.Body({
-    mass: mass,
-    shape: new CANNON.Box(scale),
-    position: position,
-    quaternion: rotation,
-    collisionFilterGroup: 1
-  });
-  world.addBody(boxBody);
-  console.log('Create Box:', boxBody); 
-}
-
-function createCylinder(mass, position, rotation, scale) {
-  console.log(mass, position, rotation, scale);
-  let cylinderBody = new CANNON.Body({
-    mass: mass,
-    shape: new CANNON.Cylinder(scale, scale, scale * 2.2, 10),
-    position: position,
-    quaternion: rotation,
-    collisionFilterGroup: 1
-  });
-  world.addBody(cylinderBody);
-  console.log('Create Cylinder:', cylinderBody); 
-}
-
-function createPlane() {
-  let groundBody = new CANNON.Body({
-    mass: 0, // mass == 0 makes the body static
-    shape: new CANNON.Plane(),
-    collisionFilterGroup: 1
-  });
-  groundBody.position.set(0, 0, 0);
-  world.addBody(groundBody);
-  console.log('Create Plane:', groundBody);   
-}
-
-function removeBody(id) {
-  world.remove()
-}
-
-function update(time) {
-  if (!runSimulation) return;
-
-  if (lastTime !== undefined) {
-    const dt = (time - lastTime) / 1000;
-    world.step(fixedTimeStep, dt, maxSubSteps);
-  }
-
+cannonEngine.addEventListener("update", function () {
   for (let i = 0; i < world.bodies.length; i++) {
     const body = world.bodies[i];
     if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
-    sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
+    // sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
   }
-  updateSimulationBodyCount(world.bodies.length);
+  // updateSimulationBodyCount(world.bodies.length);
+});
 
-  lastTime = time;
-  requestAnimationFrame(update);
+function setupSceneMenu() {
+  sceneMenuFolder = cannonEngine.gui.addFolder("Scenes");
+  sceneMenuFolder.open();
+  sceneMenuFolder.add({ ["Reset"]: () => cannonEngine.resetScene(0) }, "Reset");
 }
+
+function initWorld() {
+  // Spheres
+  cannonEngine.addScene("Pile", () => {
+    const world = setupWorld(cannonEngine);
+
+    // Plane -x
+    const planeShapeXmin = new CANNON.Plane();
+    const planeXmin = new CANNON.Body({ mass: 0 });
+    planeXmin.addShape(planeShapeXmin);
+    planeXmin.quaternion.setFromEuler(0, Math.PI / 2, 0);
+    planeXmin.position.set(-5, 0, 0);
+    world.addBody(planeXmin);
+
+    // Plane +x
+    const planeShapeXmax = new CANNON.Plane();
+    const planeXmax = new CANNON.Body({ mass: 0 });
+    planeXmax.addShape(planeShapeXmax);
+    planeXmax.quaternion.setFromEuler(0, -Math.PI / 2, 0);
+    planeXmax.position.set(5, 0, 0);
+    world.addBody(planeXmax);
+
+    // Plane -z
+    const planeShapeZmin = new CANNON.Plane();
+    const planeZmin = new CANNON.Body({ mass: 0 });
+    planeZmin.addShape(planeShapeZmin);
+    planeZmin.quaternion.setFromEuler(0, 0, 0);
+    planeZmin.position.set(0, 0, -5);
+    world.addBody(planeZmin);
+
+    // Plane +z
+    const planeShapeZmax = new CANNON.Plane();
+    const planeZmax = new CANNON.Body({ mass: 0 });
+    planeZmax.addShape(planeShapeZmax);
+    planeZmax.quaternion.setFromEuler(0, Math.PI, 0);
+    planeZmax.position.set(0, 0, 5);
+    world.addBody(planeZmax);
+
+    const size = 1;
+    const bodies = [];
+    let i = 0;
+    if (interval) clearInterval(interval);
+    interval = setInterval(() => {
+      // Sphere
+      i++;
+      const sphereShape = new CANNON.Sphere(size);
+      const sphereBody = new CANNON.Body({
+        mass: 5,
+        position: new CANNON.Vec3(-size * 2 * Math.sin(i), size * 2 * 7, size * 2 * Math.cos(i)),
+      });
+      sphereBody.addShape(sphereShape);
+      world.addBody(sphereBody);
+      cannonEngine.addVisual(sphereBody);
+      bodies.push(sphereBody);
+
+      if (bodies.length > 80) {
+        const bodyToKill = bodies.shift();
+        cannonEngine.removeVisual(bodyToKill);
+        world.removeBody(bodyToKill);
+      }
+    }, 100);
+  });
+
+  cannonEngine.buildScene(0);
+
+  function setupWorld(cannonEngine) {
+    const world = cannonEngine.getWorld();
+    world.gravity.set(0, -50, 0);
+
+    // Max solver iterations: Use more for better force propagation, but keep in mind that it's not very computationally cheap!
+    world.solver.iterations = 5;
+
+    // Tweak contact properties.
+    // Contact stiffness - use to make softer/harder contacts
+    world.defaultContactMaterial.contactEquationStiffness = 5e6;
+
+    // Stabilization time in number of timesteps
+    world.defaultContactMaterial.contactEquationRelaxation = 10;
+
+    // Since we have many bodies and they don't move very much, we can use the less accurate quaternion normalization
+    world.quatNormalizeFast = true;
+    world.quatNormalizeSkip = 3; // ...and we do not have to normalize every step.
+
+    // Static ground plane
+    const groundShape = new CANNON.Plane();
+    const groundBody = new CANNON.Body({ mass: 0 });
+    groundBody.addShape(groundShape);
+    groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(groundBody);
+    cannonEngine.addVisual(groundBody);
+
+    return world;
+  }
+}
+
+setupSceneMenu();
+initWorld();
