@@ -52,12 +52,18 @@ class NeosPhysicsSockets extends EventTarget {
     this.websocket.send(`totalBodies|${totalBodies}`);
   };
 
-  sendPhysicsUpdate = (id, bodyType, position, rotation) => {
+  sendPhysicsUpdate = (bodiesData) => {
     if (!this.socketReady) return;
-    this.websocket.send(
-      `${id}#${bodyType}%[${position.x};${position.y};${position.z}]|[${rotation.w};${rotation.x};${rotation.y};${rotation.z}]`
-    );
+    this.websocket.send(bodiesData);
   };
+
+  // Old method
+  // sendPhysicsUpdate = (id, bodyType, position, rotation) => {
+  //   if (!this.socketReady) return;
+  //   this.websocket.send(
+  //     `${id}#${bodyType}%[${position.x};${position.y};${position.z}]|[${rotation.w};${rotation.x};${rotation.y};${rotation.z}]`
+  //   );
+  // };
 
   sendRemoveBody = (id) => {
     this.websocket.send(`remove|${id}`);

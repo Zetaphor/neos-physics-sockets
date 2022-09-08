@@ -21,13 +21,24 @@ window.addEventListener("worldReset", function () {
 });
 
 window.addEventListener("worldUpdate", function () {
+  let bodiesData = "";
   for (let i = 0; i < world.bodies.length; i++) {
     const body = world.bodies[i];
     if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
-    sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
+    const bodyType = bodyTypes[body.shapes[0].type];
+    bodiesData += `${body.id}#${bodyType}%[${body.position.x};${body.position.y};${body.position.z}]|[${body.quaternion.w};${body.quaternion.x};${body.quaternion.y};${body.quaternion.z}]^`;
   }
-  // if (world.bodies.length !== lastBodyCount) sockets.updateSimulationBodyCount(world.bodies.length);
+  sockets.sendPhysicsUpdate(bodiesData);
 });
+
+// Old method
+// window.addEventListener("worldUpdate", function () {
+//   for (let i = 0; i < world.bodies.length; i++) {
+//     const body = world.bodies[i];
+//     if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
+//     sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
+//   }
+// });
 
 sockets.addEventListener("resetWorld", function () {
   console.log("Reset world from websocket");
@@ -81,7 +92,7 @@ function createSphere(mass, position, rotation, radius) {
 
 function createBox(mass, position, rotation, scale) {
   const boxShape = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
-  let boxBody = new CANNON.Body({ mass: 5 });
+  let boxBody = new CANNON.Body({ mass: mass });
   boxBody.position.set(position.x, position.y, position.z);
   boxBody.addShape(boxShape);
   world.addBody(boxBody);
