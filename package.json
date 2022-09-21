@@ -1,0 +1,14 @@
+{
+  "name": "neos-physics-sockets",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:Zetaphor/neos-physics-sockets.git",
+  "author": "Zetaphor <zetaphor@hey.com>",
+  "license": "MIT",
+  "dependencies": {
+    "http": "^0.0.1-security",
+    "koa": "^2.13.4",
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.10.0",
+    "ws": "^8.8.1"
+  }
+}

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Websocket Test</title>
+  </head>
+
+  <body>
+    <h1>Websocket Test</h1>
+    <p>
+      Websocket Status:
+      <span id="websocketStatus">Disconnected</span>
+    </p>
+    <div>
+      <button id="create" onclick="createSocket()">Create Socket</button>
+      <input type="text" id="socketUrl" />
+      <button id="connect" onclick="connect()">Connect</button>
+      <button id="disconnect" onclick="disconnect()">Disconnect</button>
+    </div>
+    <div id="websocketOutputContainer" style="display: none">
+      <h3>Websocket Output:</h3>
+      <p id="websocketOutput"></p>
+    </div>
+    <p id="websocketError" style="display: none">There was an error connecting to the websocket server</p>
+    <script type="text/javascript" src="test-websocket.js"></script>
+  </body>
+</html>
