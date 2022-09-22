@@ -94,6 +94,7 @@ function createBox(mass, position, rotation, scale) {
   const boxShape = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
   let boxBody = new CANNON.Body({ mass: mass });
   boxBody.position.set(position.x, position.y, position.z);
+  //boxBody.quaternion.set(rotation);
   boxBody.addShape(boxShape);
   world.addBody(boxBody);
   cannonEngine.addVisual(boxBody);
