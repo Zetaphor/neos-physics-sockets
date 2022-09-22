@@ -2,12 +2,14 @@ var url = "ws://localhost:8080/chat-echo";
 var output;
 
 var websocket = null;
-const socketUrlInput = document.getElementById("socketUrl");
+const socketUrl = "ws://localhost:3000/init";
 console.log("Loaded");
+
+clientSocket = null;
 
 function connect() {
   output = document.getElementById("output");
-  websocket = new WebSocket(socketUrlInput.value);
+  websocket = new WebSocket(socketUrl);
 
   websocket.onopen = function (e) {
     document.getElementById("websocketStatus").innerHTML = "Connected";
@@ -33,14 +35,26 @@ function disconnect() {
   websocket.disconnect();
 }
 
-async function createSocket() {
-  let response = await fetch("http://localhost:3000/create/12");
+function sendMessage() {
+  websocket.send("test messages");
+}
 
-  if (response.ok) {
-    const socketUrl = await response.text();
-    console.log("Response:", socketUrl);
-    socketUrlInput.value = socketUrl;
-  } else {
-    console.error("HTTP-Error: " + response.status);
-  }
+function createBody() {
+  clientSocket = new WebSocket("ws://localhost:3000/" + document.getElementById("createParams").value);
+
+  clientSocket.onopen = function (e) {
+    console.log("Connected client");
+  };
+
+  clientSocket.onmessage = function (e) {
+    console.log("Client message");
+  };
+
+  clientSocket.onerror = function (e) {
+    console.log("Client error");
+  };
+
+  clientSocket.onclose = function (e) {
+    console.log("Client disconnected");
+  };
 }

@@ -4,34 +4,52 @@ const WebSocket = require("ws");
 const url = require("url");
 
 const app = new Koa();
-
-const connectedClients = {};
+let masterWebsocket = null;
 
 app.use((ctx) => {
   ctx.set("Access-Control-Allow-Origin", "*");
-  console.log("Url:", ctx.url);
-  if (ctx.url.startsWith("/create/")) {
-    ctx.body = `ws://localhost:3000/${new Date().getTime()}`;
-  } else if (ctx.url === "/clients") {
-    ctx.body = "Messaging all clients";
-    for (const clientId in connectedClients) {
-      if (Object.hasOwnProperty.call(connectedClients, clientId)) {
-        const client = connectedClients[clientId];
-        client.send("I see you " + clientId);
-      }
-    }
+  if (ctx.url.startsWith("/init")) {
+    ctx.body = `success`;
+  } else {
+    ctx.body = "error";
   }
 });
 
-const ws = new WebSocket.Server({ noServer: true, clientTracking: false });
+const wss = new WebSocket.Server({ noServer: true, clientTracking: false });
 
 const server = http.createServer(app.callback());
 
 server.on("upgrade", function upgrade(request, socket, head) {
   const pathname = url.parse(request.url).pathname;
-  ws.handleUpgrade(request, socket, head, function done(ws) {
-    ws.send("Connected");
-    connectedClients[pathname.split("/")[1]] = ws;
+
+  wss.on("connection", function connction(ws) {
+    console.log("Socket connection:", ws.clientId);
+  });
+
+  wss.handleUpgrade(request, socket, head, function done(ws) {
+    if (pathname === "/init") {
+      ws.clientId = "master";
+      ws.customData = {};
+      console.log("Initialized master socket");
+      ws.send("Initialized master socket");
+      masterWebsocket = ws;
+    } else if (pathname.startsWith("/createBody/")) {
+      // createBody/id/bodyType
+      pathParts = pathname.split("/");
+      ws.clientId = pathParts[2];
+      ws.customData = {
+        type: pathParts[3],
+        lastData: "",
+      };
+      masterWebsocket.send(`Created body #${pathParts[2]} of type ${pathParts[3]}`);
+      console.log(`Created body #${pathParts[2]} of type ${pathParts[3]}`);
+
+      // ws.on("message", function (message) {
+      //   if (ws.clientId === "master") {
+      //     console.log("Master client update", message);
+      //   }
+      // });
+    }
   });
 });
 
