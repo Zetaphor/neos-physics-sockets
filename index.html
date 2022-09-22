@@ -39,7 +39,12 @@
       max-width: 1600px;
       left: 50%;
       transform: translate(-50%, -50%);
-      top: 500px;
+      top: 550px;
+    }
+
+    #neosOutputContainer,
+    #neosMasterListen {
+      display: none;
     }
   </style>
 
@@ -53,7 +58,15 @@
         <span id="websocketOutput"></span>
       </p>
       <p id="websocketError">There was an error connecting to the websocket server</p>
+      <div id="neosMasterDebug">
+        <button id="neosMasterListen" onclick="connectNeosSocket()">Connect to Neos master socket</button>
+        <p id="neosOutputContainer">
+          Neos Socket Output:
+          <span id="neosSocketOutput"></span>
+        </p>
+      </div>
     </div>
     <script type="module" src="engine.js"></script>
+    <script type="module" src="debug-neos-socket.js"></script>
   </body>
 </html>

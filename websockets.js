@@ -1,5 +1,5 @@
 class NeosPhysicsSockets extends EventTarget {
-  url = "ws://localhost:8080/chat-echo";
+  url = "ws://localhost:3000/localMaster";
   output;
   socketReady = false;
   websocket = null;
@@ -17,6 +17,7 @@ class NeosPhysicsSockets extends EventTarget {
     this.socketReady = true;
     document.getElementById("websocketStatus").innerHTML = "Connected";
     document.getElementById("websocketOutputContainer").style.display = "block";
+    document.getElementById("neosMasterListen").style.display = "block";
   };
 
   socketError = (ev) => {
@@ -24,6 +25,7 @@ class NeosPhysicsSockets extends EventTarget {
     this.receivedWorldPause();
     document.getElementById("websocketOutputContainer").style.display = "none";
     document.getElementById("websocketError").style.display = "block";
+    document.getElementById("neosMasterDebug").style.display = "none";
   };
 
   socketClose = (ev) => {
@@ -31,6 +33,7 @@ class NeosPhysicsSockets extends EventTarget {
     this.receivedWorldPause();
     document.getElementById("websocketOutputContainer").style.display = "none";
     document.getElementById("websocketStatus").innerHTML = "Disconnected";
+    document.getElementById("neosMasterDebug").style.display = "none";
   };
 
   socketMessage = (ev) => {
@@ -54,16 +57,8 @@ class NeosPhysicsSockets extends EventTarget {
 
   sendPhysicsUpdate = (bodiesData) => {
     if (!this.socketReady) return;
-    this.websocket.send(bodiesData);
+    this.websocket.send("bodiesUpdate|" + JSON.stringify(bodiesData));
   };
-
-  // Old method
-  // sendPhysicsUpdate = (id, bodyType, position, rotation) => {
-  //   if (!this.socketReady) return;
-  //   this.websocket.send(
-  //     `${id}#${bodyType}%[${position.x};${position.y};${position.z}]|[${rotation.w};${rotation.x};${rotation.y};${rotation.z}]`
-  //   );
-  // };
 
   sendRemoveBody = (id) => {
     this.websocket.send(`remove|${id}`);
@@ -86,51 +81,56 @@ class NeosPhysicsSockets extends EventTarget {
     this.dispatchEvent(new CustomEvent("pauseWorld"));
   }
 
-  removeBodyFromString = (input) => {
-    // remove|1
-    this.dispatchEvent("removeBody", {
-      detail: {
-        id: parseInt(input.split("|")[1]),
-      },
-    });
-  };
+  // Tell Neos to create a new object and connect to a websocket ID for updates
+  addedSimulationBody(id, type) {
+    this.websocket.send(`addedBody|${id}&${type}`);
+  }
 
-  addBodyFromString = (input) => {
-    // addBox|mass|position|rotation|scale
-    const inputArgs = input.split("|");
-    const bodyType = inputArgs[0].split("add")[1].toLowerCase();
-    const mass = parseFloat(inputArgs[1]);
+  // removeBodyFromString = (input) => {
+  //   // remove|1
+  //   this.dispatchEvent("removeBody", {
+  //     detail: {
+  //       id: parseInt(input.split("|")[1]),
+  //     },
+  //   });
+  // };
 
-    const positionArgs = inputArgs[2].split(",");
-    const position = { x: parseFloat(positionArgs[0]), y: parseFloat(positionArgs[1]), z: parseFloat(positionArgs[2]) };
+  // addBodyFromString = (input) => {
+  //   // addBox|mass|position|rotation|scale
+  //   const inputArgs = input.split("|");
+  //   const bodyType = inputArgs[0].split("add")[1].toLowerCase();
+  //   const mass = parseFloat(inputArgs[1]);
 
-    const rotationArgs = inputArgs[3].split(",");
-    const rotation = {
-      x: parseFloat(rotationArgs[0]),
-      y: parseFloat(rotationArgs[1]),
-      z: parseFloat(rotationArgs[2]),
-      w: parseFloat(rotationArgs[3]),
-    };
+  //   const positionArgs = inputArgs[2].split(",");
+  //   const position = { x: parseFloat(positionArgs[0]), y: parseFloat(positionArgs[1]), z: parseFloat(positionArgs[2]) };
 
-    let scale = 0;
-    if (bodyType === "cylinder" || bodyType === "sphere") scale = parseFloat(inputArgs[4]);
-    else {
-      const scaleArgs = inputArgs[4].split(",");
-      scale = { x: parseFloat(positionArgs[0]), y: parseFloat(positionArgs[1]), z: parseFloat(positionArgs[2]) };
-    }
+  //   const rotationArgs = inputArgs[3].split(",");
+  //   const rotation = {
+  //     x: parseFloat(rotationArgs[0]),
+  //     y: parseFloat(rotationArgs[1]),
+  //     z: parseFloat(rotationArgs[2]),
+  //     w: parseFloat(rotationArgs[3]),
+  //   };
 
-    this.dispatchEvent(
-      new CustomEvent("createBody", {
-        detail: {
-          type: bodyType,
-          mass: mass,
-          position: position,
-          rotation: rotation,
-          scale: scale,
-        },
-      })
-    );
-  };
+  //   let scale = 0;
+  //   if (bodyType === "cylinder" || bodyType === "sphere") scale = parseFloat(inputArgs[4]);
+  //   else {
+  //     const scaleArgs = inputArgs[4].split(",");
+  //     scale = { x: parseFloat(positionArgs[0]), y: parseFloat(positionArgs[1]), z: parseFloat(positionArgs[2]) };
+  //   }
+
+  //   this.dispatchEvent(
+  //     new CustomEvent("createBody", {
+  //       detail: {
+  //         type: bodyType,
+  //         mass: mass,
+  //         position: position,
+  //         rotation: rotation,
+  //         scale: scale,
+  //       },
+  //     })
+  //   );
+  // };
 }
 
 export { NeosPhysicsSockets };
