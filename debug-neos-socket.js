@@ -26,3 +26,19 @@ function neosSocketMessage(ev) {
   console.log("Neos socket message:", ev.data);
   document.getElementById("neosSocketOutput").innerText = ev.data;
 }
+
+window.createTestBody = function () {
+  let testSocket = new WebSocket("ws://localhost:3000/createBodySocket/1/box");
+  testSocket.onopen = function () {
+    console.log("Test socket open");
+  };
+  testSocket.onmessage = function (ev) {
+    console.log("Test socket message:", ev.data);
+  };
+  testSocket.onerror = function () {
+    console.log("Test socket error");
+  };
+  testSocket.onclose = function () {
+    console.log("Test socket close");
+  };
+};

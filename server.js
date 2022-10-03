@@ -26,6 +26,7 @@ server.on("upgrade", function upgrade(request, socket, head) {
   });
 
   wss.handleUpgrade(request, socket, head, function done(ws) {
+    console.log(pathname);
     if (pathname === "/localMaster") {
       ws.clientId = "localMaster";
       console.log("Initialized local master socket");
@@ -77,7 +78,8 @@ server.on("upgrade", function upgrade(request, socket, head) {
         console.log("Neos master message:", message);
       });
     } else if (pathname.startsWith("/createBodySocket/")) {
-      // createBody/bodyType/position/rotation
+      if (!connectionsReady) return;
+      // createBodySocket/id/type
       pathParts = pathname.split("/");
       ws.clientId = pathParts[2];
       ws.customData = {
@@ -85,7 +87,8 @@ server.on("upgrade", function upgrade(request, socket, head) {
         prevPosition: "",
         prevRotation: "",
       };
-      masterWebsocket.send(`Created body socket #${pathParts[2]} of type ${pathParts[3]}`);
+      console.log("Sending body socket data");
+      localMasterWebsocket.send(`Created body socket #${pathParts[2]} of type ${pathParts[3]}`);
       console.log(`Created body #${pathParts[2]} of type ${pathParts[3]}`);
     }
   });
