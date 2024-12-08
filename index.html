@@ -1,73 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Physics Test</title>
-  </head>
-  <style>
-    html,
-    body {
-      overflow: hidden;
-    }
 
-    p {
-      margin-bottom: 10px;
-    }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Test</title>
+</head>
+<style>
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #1a1a1a;
+    color: #ffffff;
+  }
 
-    #info {
-      position: absolute;
-      top: 0;
-      left: 0;
-      max-width: 500px;
-      padding: 10px;
-    }
+  #info {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 0 0 10px 0;
+    z-index: 100;
+  }
 
-    #websocketOutputContainer,
-    #websocketError {
-      display: none;
-    }
+  .status-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+  }
 
-    #websocketError {
-      color: #ff0000;
-      background: #fff;
-      font-weight: bold;
-    }
+  .status-label {
+    font-weight: bold;
+    margin-right: 10px;
+  }
 
-    #canvasContainer {
-      position: absolute;
-      max-width: 1600px;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      top: 550px;
-    }
+  .status-value {
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+  }
 
-    #neosOutputContainer,
-    #neosMasterListen {
-      display: none;
-    }
-  </style>
+  .status-connected {
+    color: #4CAF50;
+  }
 
-  <body>
-    <div id="canvasContainer"></div>
-    <div id="info">
-      Websocket Status:
-      <span id="websocketStatus">Disconnected</span>
-      <p id="websocketOutputContainer">
-        Websocket Output:
-        <span id="websocketOutput"></span>
-      </p>
-      <p id="websocketError">There was an error connecting to the websocket server</p>
-      <div id="neosMasterDebug">
-        <button id="neosMasterListen" onclick="connectNeosSocket()">Connect to Neos master socket</button>
-        <button id="neosTestBody" onclick="createTestBody()">Create Test Body</button>
-        <p id="neosOutputContainer">
-          Neos Socket Output:
-          <span id="neosSocketOutput"></span>
-        </p>
+  .status-disconnected {
+    color: #f44336;
+  }
+
+  .error-message {
+    color: #f44336;
+    background: rgba(244, 67, 54, 0.1);
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+    display: none;
+  }
+
+  #debug-controls {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  button {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    transition: background 0.2s;
+  }
+
+  button:hover {
+    background: #1976D2;
+  }
+
+  button:active {
+    background: #0D47A1;
+  }
+
+  #canvasContainer {
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    left: 0;
+    top: 0;
+  }
+
+  #oscOutputContainer {
+    display: none;
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+
+  #resoniteOutputContainer {
+    display: none;
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+  }
+</style>
+
+<body>
+  <div id="canvasContainer"></div>
+
+  <div id="info">
+    <div class="status-container">
+      <span class="status-label">OSC Status:</span>
+      <span id="oscStatus" class="status-value status-disconnected">Disconnected</span>
+    </div>
+
+    <div id="oscOutputContainer">
+      <div class="status-label">OSC Output:</div>
+      <div id="oscOutput" class="status-value"></div>
+    </div>
+
+    <p id="oscError" class="error-message">There was an error connecting to the OSC server</p>
+
+    <div id="debug-controls">
+      <div id="resoniteMasterDebug">
+        <button id="resoniteMasterListen" onclick="connectResoniteOSC()">Connect to Resonite OSC</button>
+        <button id="resoniteTestBody" onclick="createTestBody()">Create Test Body</button>
+
+        <div id="resoniteOutputContainer">
+          <div class="status-label">Resonite Output:</div>
+          <div id="resoniteSocketOutput" class="status-value"></div>
+        </div>
       </div>
     </div>
-    <script type="module" src="engine.js"></script>
-    <script type="module" src="debug-neos-socket.js"></script>
-  </body>
+  </div>
+
+  <script type="module" src="engine.js"></script>
+  <script type="module" src="debug-resonite-osc.js"></script>
+</body>
+
 </html>

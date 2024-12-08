@@ -1,10 +1,10 @@
 import * as CANNON from "/libs/cannon-es.js";
 import { Engine } from "/cannon-engine.js";
-import { NeosPhysicsSockets } from "/websockets.js";
+import { ResonitePhysicsOSC } from "/osc-client.js";
 
 const cannonEngine = new Engine();
 let world;
-const sockets = new NeosPhysicsSockets();
+const osc = new ResonitePhysicsOSC();
 let sceneMenuFolder;
 
 const bodyTypes = {
@@ -15,7 +15,7 @@ const bodyTypes = {
 };
 
 window.addEventListener("worldReset", function () {
-  sockets.sendWorldReset();
+  osc.sendWorldReset();
   console.log("Reset world");
 });
 
@@ -31,48 +31,20 @@ window.addEventListener("worldUpdate", function () {
       rotation: `${body.quaternion.x};${body.quaternion.y};${body.quaternion.z};${body.quaternion.w}`,
     };
   }
-  sockets.sendPhysicsUpdate(bodiesData);
+  osc.sendPhysicsUpdate(bodiesData);
 });
 
-// Old method
-// window.addEventListener("worldUpdate", function () {
-//   for (let i = 0; i < world.bodies.length; i++) {
-//     const body = world.bodies[i];
-//     if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
-//     sockets.sendPhysicsUpdate(body.id, bodyTypes[body.shapes[0].type], body.position, body.quaternion);
-//   }
-// });
-
-sockets.addEventListener("resetWorld", function () {
+osc.addEventListener("resetWorld", function () {
   console.log("Reset world from websocket");
   resetWorld();
 });
 
-// sockets.addEventListener("createBody", function (ev) {
-//   const body = ev.detail;
-//   console.log(body);
-//   createBody(body.type, body.mass, body.position, body.rotation, body.scale);
-//   console.log("Created body from websocket");
-// });
-
-// sockets.addEventListener("removeBody", function (id) {
-//   for (let i = 0; i < cannonEngine.bodies.length; i++) {
-//     const body = cannonEngine.bodies[i];
-//     if (body.id === id) {
-//       cannonEngine.removeVisual(bodyToKill);
-//       world.removeBody(bodyToKill);
-//       console.log("Removed body from websocket");
-//       break;
-//     }
-//   }
-// });
-
-sockets.addEventListener("pauseWorld", function () {
+osc.addEventListener("pauseWorld", function () {
   pauseWorld();
   console.log("Pause world from websocket");
 });
 
-sockets.addEventListener("resumeWorld", function () {
+osc.addEventListener("resumeWorld", function () {
   resumeWorld();
   console.log("Resume world from websocket");
 });
@@ -82,7 +54,7 @@ function createBody(type, mass, position, rotation, scale) {
   if (type === "box") newBodyId = createBox(mass, position, rotation, scale);
   else if (type === "sphere") newBodyId = createSphere(mass, position, rotation, scale);
   else if (type === "cylinder") newBodyId = createCylinder(mass, position, rotation, scale);
-  sockets.addedSimulationBody(newBodyId, type);
+  osc.addedSimulationBody(newBodyId, type);
 }
 
 function createSphere(mass, position, rotation, radius) {

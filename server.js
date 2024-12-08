@@ -5,7 +5,7 @@ const url = require("url");
 
 const app = new Koa();
 let localMasterWebsocket = null;
-let neosMasterWebsocket = null;
+let resoniteMasterWebsocket = null;
 let connectionsReady = false;
 
 app.use((ctx) => {
@@ -32,20 +32,20 @@ server.on("upgrade", function upgrade(request, socket, head) {
       console.log("Initialized local master socket");
       ws.send("Initialized local master socket");
       localMasterWebsocket = ws;
-      if (localMasterWebsocket !== null && neosMasterWebsocket !== null) connectionsReady = true;
+      if (localMasterWebsocket !== null && resoniteMasterWebsocket !== null) connectionsReady = true;
 
       ws.on("message", function (msg) {
         if (!connectionsReady) return;
         const message = msg.toString();
         // console.log("Local master message:", message);
         if (message.startsWith("addedBody|")) {
-          neosMasterWebsocket.send(message);
+          resoniteMasterWebsocket.send(message);
           console.log("Added body:", message);
         } else if (message.startsWith("bodiesUpdate|")) {
           const bodiesData = JSON.parse(message.split("bodiesUpdate|")[1]);
           if (Object.keys(bodiesData).length) {
             for (const client of wss.clients) {
-              if (client.clientId === "localMaster" || client.clientId === "neosMaster") continue;
+              if (client.clientId === "localMaster" || client.clientId === "resoniteMaster") continue;
               // Need to handle removal of object and closing of sockets here?
               if (typeof bodiesData[client.clientId] !== "undefined") {
                 let changed = false;
@@ -65,17 +65,17 @@ server.on("upgrade", function upgrade(request, socket, head) {
           }
         }
       });
-    } else if (pathname === "/neosMaster") {
-      ws.clientId = "neosMaster";
-      console.log("Initialized Neos master socket");
-      ws.send("Initialized Neos master socket");
-      neosMasterWebsocket = ws;
-      if (localMasterWebsocket !== null && neosMasterWebsocket !== null) connectionsReady = true;
+    } else if (pathname === "/resoniteMaster") {
+      ws.clientId = "resoniteMaster";
+      console.log("Initialized Resonite master socket");
+      ws.send("Initialized Resonite master socket");
+      resoniteMasterWebsocket = ws;
+      if (localMasterWebsocket !== null && resoniteMasterWebsocket !== null) connectionsReady = true;
 
       ws.on("message", function (msg) {
         if (!connectionsReady) return;
         const message = msg.toString();
-        console.log("Neos master message:", message);
+        console.log("Resonite master message:", message);
       });
     } else if (pathname.startsWith("/createBodySocket/")) {
       if (!connectionsReady) return;

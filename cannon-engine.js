@@ -5,6 +5,16 @@ import * as dat from "/libs/dat.gui.module.js";
 import { OrbitControls } from "/libs/OrbitControls.js";
 import { SmoothieChart, TimeSeries } from "/libs/smoothie.js";
 import { bodyToMesh } from "/libs/three-conversion-utils.js";
+import {
+  Scene,
+  PerspectiveCamera,
+  WebGLRenderer,
+  AmbientLight,
+  DirectionalLight,
+  MeshPhongMaterial,
+  ShadowMaterial,
+  PCFSoftShadowMap,
+} from '/libs/three.module.js';
 
 /**
  * Engine utility class. If you want to learn how to connect cannon.js with three.js, please look at the examples/threejs_* instead.
@@ -12,6 +22,10 @@ import { bodyToMesh } from "/libs/three-conversion-utils.js";
 class Engine extends CANNON.EventTarget {
   renderWidth = 1600;
   renderHeight = 800;
+  physicsFrameRate = 60;
+  renderFrameRate = 60;
+  lastRenderTime = 0;
+  lastPhysicsTime = 0;
   sceneFolder;
   scenes = {};
   listeners = {};
@@ -58,6 +72,8 @@ class Engine extends CANNON.EventTarget {
       aabbs: false,
       profiling: false,
       maxSubSteps: 20,
+      physicsFrameRate: 60,
+      renderFrameRate: 60,
       ...options,
     };
 
@@ -95,11 +111,14 @@ class Engine extends CANNON.EventTarget {
     this.gui = new dat.GUI();
     this.gui.domElement.parentNode.style.zIndex = 3;
 
-    // Render mode
+    // Render folder
     const renderFolder = this.gui.addFolder("Rendering");
     renderFolder.add(this.settings, "renderPaused");
     renderFolder.add(this.settings, "rendermode", { Solid: "solid", Wireframe: "wireframe" }).onChange((mode) => {
       this.setRenderMode(mode);
+    });
+    renderFolder.add(this.settings, "renderFrameRate", 1, 120).name("Frame Rate").onChange((value) => {
+      this.renderFrameRate = value;
     });
     renderFolder.add(this.settings, "contacts");
     renderFolder.add(this.settings, "cm2contact");
@@ -107,19 +126,8 @@ class Engine extends CANNON.EventTarget {
     renderFolder.add(this.settings, "constraints");
     renderFolder.add(this.settings, "axes");
     renderFolder.add(this.settings, "aabbs");
-    renderFolder.add(this.settings, "profiling").onChange((profiling) => {
-      if (profiling) {
-        this.world.doProfiling = true;
-        this.smoothie.start();
-        this.smoothieCanvas.style.display = "block";
-      } else {
-        this.world.doProfiling = false;
-        this.smoothie.stop();
-        this.smoothieCanvas.style.display = "none";
-      }
-    });
 
-    // World folder
+    // Simulation folder
     const simulationFolder = this.gui.addFolder("Simulation");
     // Pause
     simulationFolder.add(this.settings, "paused").onChange((paused) => {
@@ -132,59 +140,65 @@ class Engine extends CANNON.EventTarget {
     });
     simulationFolder.add(this.settings, "stepFrequency", 10, 60 * 10, 10);
     simulationFolder.add(this.settings, "maxSubSteps", 1, 50, 1);
+    simulationFolder.add(this.settings, "physicsFrameRate", 1, 120).name("Physics Rate").onChange((value) => {
+      this.physicsFrameRate = value;
+      this.settings.stepFrequency = value;
+    });
+
     const maxg = 100;
     simulationFolder.add(this.settings, "gx", -maxg, maxg).onChange((gx) => {
       if (isNaN(gx)) {
         return;
       }
-
       this.world.gravity.set(gx, this.settings.gy, this.settings.gz);
     });
     simulationFolder.add(this.settings, "gy", -maxg, maxg).onChange((gy) => {
       if (isNaN(gy)) {
         return;
       }
-
       this.world.gravity.set(this.settings.gx, gy, this.settings.gz);
     });
     simulationFolder.add(this.settings, "gz", -maxg, maxg).onChange((gz) => {
       if (isNaN(gz)) {
         return;
       }
-
       this.world.gravity.set(this.settings.gx, this.settings.gy, gz);
     });
     simulationFolder.add(this.settings, "quatNormalizeSkip", 0, 50, 1).onChange((skip) => {
       if (isNaN(skip)) {
         return;
       }
-
       this.world.quatNormalizeSkip = skip;
     });
     simulationFolder.add(this.settings, "quatNormalizeFast").onChange((fast) => {
       this.world.quatNormalizeFast = !!fast;
     });
+    simulationFolder.add(this.settings, "profiling").onChange((profiling) => {
+      if (profiling) {
+        this.world.doProfiling = true;
+        this.smoothie.start();
+        this.smoothieCanvas.style.display = "block";
+      } else {
+        this.world.doProfiling = false;
+        this.smoothie.stop();
+        this.smoothieCanvas.style.display = "none";
+      }
+    });
 
     // Solver folder
     const solverFolder = this.gui.addFolder("Solver");
-    solverFolder
-      .add(this.settings, "iterations", 1, 50, 1)
-
-      .onChange((it) => {
-        this.world.solver.iterations = it;
-      });
+    solverFolder.add(this.settings, "iterations", 1, 50, 1).onChange((it) => {
+      this.world.solver.iterations = it;
+    });
     solverFolder.add(this.settings, "k", 10, 10000000).onChange((k) => {
       this.setGlobalSpookParams(this.settings.k, this.settings.d, 1 / this.settings.stepFrequency);
     });
     solverFolder.add(this.settings, "d", 0, 20, 0.1).onChange((d) => {
       this.setGlobalSpookParams(this.settings.k, this.settings.d, 1 / this.settings.stepFrequency);
     });
-    solverFolder
-      .add(this.settings, "tolerance", 0.0, 10.0, 0.01)
-
-      .onChange((t) => {
-        this.world.solver.tolerance = t;
-      });
+    solverFolder.add(this.settings, "tolerance", 0.0, 10.0, 0.01).onChange((t) => {
+      this.world.solver.tolerance = t;
+    });
 
     // Scene picker folder
     this.sceneFolder = this.gui.addFolder("Scenes");
@@ -628,11 +642,28 @@ class Engine extends CANNON.EventTarget {
 
   animate = () => {
     requestAnimationFrame(this.animate);
-    if (!this.settings.paused) this.updatePhysics();
-    if (!this.settings.renderPaused) {
-      this.updateVisuals();
-      this.renderer.render(this.scene, this.camera);
+
+    const currentTime = performance.now();
+
+    // Check if enough time has passed for physics update
+    if (!this.settings.paused) {
+      const physicsFrameTime = 1000 / this.settings.physicsFrameRate;
+      if (currentTime - this.lastPhysicsTime >= physicsFrameTime) {
+        this.updatePhysics();
+        this.lastPhysicsTime = currentTime;
+      }
     }
+
+    // Check if enough time has passed for render update
+    if (!this.settings.renderPaused) {
+      const renderFrameTime = 1000 / this.settings.renderFrameRate;
+      if (currentTime - this.lastRenderTime >= renderFrameTime) {
+        this.updateVisuals();
+        this.renderer.render(this.scene, this.camera);
+        this.lastRenderTime = currentTime;
+      }
+    }
+
     this.bodiesStatsPanel.update(this.bodies.length, 150);
     this.controls.update();
     this.stats.update();
@@ -642,13 +673,11 @@ class Engine extends CANNON.EventTarget {
   lastCallTime = 0;
   resetCallTime = false;
   updatePhysics = () => {
-    // Step world
-    const timeStep = 1 / this.settings.stepFrequency;
+    const timeStep = 1 / this.settings.physicsFrameRate;
 
     const now = performance.now() / 1000;
 
     if (!this.lastCallTime) {
-      // last call time not saved, cant guess elapsed time. Take a simple step.
       this.world.step(timeStep);
       this.lastCallTime = now;
       return;
@@ -699,6 +728,37 @@ class Engine extends CANNON.EventTarget {
     this.controls.dampingFactor = 0.2;
     this.controls.minDistance = 10;
     this.controls.maxDistance = 500;
+
+    // Enable shadow mapping in the renderer
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+
+    // Add ambient light for base illumination
+    const ambientLight = new AmbientLight(0x404040, 1.5); // soft white light
+    this.scene.add(ambientLight);
+
+    // Add directional light for shadows
+    const dirLight = new DirectionalLight(0xffffff, 1);
+    dirLight.position.set(10, 10, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.camera.near = 0.1;
+    dirLight.shadow.camera.far = 40;
+    dirLight.shadow.camera.right = 15;
+    dirLight.shadow.camera.left = -15;
+    dirLight.shadow.camera.top = 15;
+    dirLight.shadow.camera.bottom = -15;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
+    this.scene.add(dirLight);
+
+    // Update the ground plane material to receive shadows
+    this.groundMaterial = new THREE.MeshPhongMaterial({
+      color: 0x808080,  // Subtle gray color
+      transparent: true,
+      opacity: 0.4,
+      side: THREE.DoubleSide,
+      shadowSide: THREE.DoubleSide,
+    });
   };
 
   initSmoothie = () => {
@@ -807,10 +867,17 @@ class Engine extends CANNON.EventTarget {
     // if it's a particle paint it red, if it's a trigger paint it as green, if it's a plane paint it grey, otherwise random color
     let material = this.currentMaterial.clone();
     const isParticle = body.shapes.every((s) => s instanceof CANNON.Particle);
-    if (isParticle) material = this.particleMaterial;
-    else if (body.isTrigger) material = this.triggerMaterial;
-    else if (body.type === 2) material = this.currentMaterial;
-    else material.color.set(this.randomMaterialColor());
+    if (isParticle) {
+      material = this.particleMaterial;
+    } else if (body.isTrigger) {
+      material = this.triggerMaterial;
+    } else if (body.type === CANNON.Body.STATIC && body.shapes[0] instanceof CANNON.Plane) {
+      material = this.groundMaterial;
+    } else if (body.type === CANNON.Body.STATIC) {
+      material = this.currentMaterial;
+    } else {
+      material.color.set(this.randomMaterialColor());
+    }
 
     // get the correspondant three.js mesh
     const mesh = bodyToMesh(body, material);

@@ -1,30 +1,30 @@
-var neosMasterSocket = null;
+var resoniteMasterSocket = null;
 
-window.connectNeosSocket = function () {
-  neosMasterSocket = new WebSocket("ws://localhost:3000/neosMaster");
-  neosMasterSocket.onopen = neosSocketOpen;
-  neosMasterSocket.onmessage = neosSocketMessage;
-  neosMasterSocket.onerror = neosSocketError;
-  neosMasterSocket.onclose = neosSocketClose;
-  document.getElementById("neosMasterListen").remove();
-  document.getElementById("neosOutputContainer").style.display = "block";
+window.connectResoniteSocket = function () {
+  resoniteMasterSocket = new WebSocket("ws://localhost:3000/resoniteMaster");
+  resoniteMasterSocket.onopen = resoniteSocketOpen;
+  resoniteMasterSocket.onmessage = resoniteSocketMessage;
+  resoniteMasterSocket.onerror = resoniteSocketError;
+  resoniteMasterSocket.onclose = resoniteSocketClose;
+  document.getElementById("resoniteMasterListen").remove();
+  document.getElementById("resoniteOutputContainer").style.display = "block";
 };
 
-function neosSocketOpen(ev) {
-  console.log("Neos socket connected");
+function resoniteSocketOpen(ev) {
+  console.log("Resonite socket connected");
 }
 
-function neosSocketError(ev) {
-  console.log("Neos socket error");
+function resoniteSocketError(ev) {
+  console.log("Resonite socket error");
 }
 
-function neosSocketClose(ev) {
-  console.log("Neos socket close");
+function resoniteSocketClose(ev) {
+  console.log("Resonite socket close");
 }
 
-function neosSocketMessage(ev) {
-  console.log("Neos socket message:", ev.data);
-  document.getElementById("neosSocketOutput").innerText = ev.data;
+function resoniteSocketMessage(ev) {
+  console.log("Resonite socket message:", ev.data);
+  document.getElementById("resoniteSocketOutput").innerText = ev.data;
 }
 
 window.createTestBody = function () {
