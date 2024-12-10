@@ -303,6 +303,7 @@ function addDemoScene() {
     interval = setInterval(() => {
       if (cannonEngine.settings.paused) return;
       if (cannonEngine.currentScene !== "Pile") return;
+
       // Sphere
       i++;
       const sphereShape = new CANNON.Sphere(size);
@@ -315,10 +316,20 @@ function addDemoScene() {
       cannonEngine.addVisual(sphereBody);
       bodies.push(sphereBody);
 
+      // Send creation event
+      osc.addedSimulationBody(
+        sphereBody.id,
+        "sphere",
+        [sphereBody.position.x, sphereBody.position.y, sphereBody.position.z],
+        [sphereBody.quaternion.x, sphereBody.quaternion.y, sphereBody.quaternion.z, sphereBody.quaternion.w]
+      );
+
       if (bodies.length > 80) {
         const bodyToKill = bodies.shift();
         cannonEngine.removeVisual(bodyToKill);
         world.removeBody(bodyToKill);
+        // Send removal event
+        osc.sendRemoveBody(bodyToKill.id);
       }
     }, 100);
   });
