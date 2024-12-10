@@ -3,6 +3,7 @@ class ResonitePhysicsOSC extends EventTarget {
   host = "localhost";
   oscReady = false;
   bodyStates = new Map(); // Track the last state of each body
+  positionScale = 0.1; // Scale factor - adjust this value as needed
 
   constructor() {
     super();
@@ -60,18 +61,17 @@ class ResonitePhysicsOSC extends EventTarget {
       const positionChanged = !lastState || this.vectorChanged(data.position, lastState.position);
       const rotationChanged = !lastState || this.vectorChanged(data.rotation, lastState.rotation);
 
-      // Only send updates if something changed
       if (positionChanged || rotationChanged) {
-        // Send as raw values: /body/id/position x y z
         if (positionChanged) {
-          this.sendOSCMessage(`/body/position`, parseInt(id), ...data.position);
+          // Only scale the position when sending
+          const scaledPosition = data.position.map(val => val * this.positionScale);
+          this.sendOSCMessage(`/body/position`, parseInt(id), ...scaledPosition);
         }
-        // Send as raw values: /body/id/rotation x y z w
         if (rotationChanged) {
           this.sendOSCMessage(`/body/rotation`, parseInt(id), ...data.rotation);
         }
 
-        // Update the stored state
+        // Store original unscaled values
         this.bodyStates.set(id, {
           type: data.type,
           position: [...data.position],
