@@ -27,8 +27,8 @@ window.addEventListener("worldUpdate", function () {
     const bodyType = bodyTypes[body.shapes[0].type];
     bodiesData[body.id] = {
       type: bodyType,
-      position: `${body.position.x};${body.position.y};${body.position.z}`,
-      rotation: `${body.quaternion.x};${body.quaternion.y};${body.quaternion.z};${body.quaternion.w}`,
+      position: [body.position.x, body.position.y, body.position.z],
+      rotation: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w],
     };
   }
   osc.sendPhysicsUpdate(bodiesData);
@@ -54,7 +54,17 @@ function createBody(type, mass, position, rotation, scale) {
   if (type === "box") newBodyId = createBox(mass, position, rotation, scale);
   else if (type === "sphere") newBodyId = createSphere(mass, position, rotation, scale);
   else if (type === "cylinder") newBodyId = createCylinder(mass, position, rotation, scale);
-  osc.addedSimulationBody(newBodyId, type);
+
+  // Get the created body to access its current position and rotation
+  const body = world.bodies.find(b => b.id === newBodyId);
+  if (body) {
+    osc.addedSimulationBody(
+      newBodyId,
+      type,
+      [body.position.x, body.position.y, body.position.z],
+      [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
+    );
+  }
 }
 
 function createSphere(mass, position, rotation, radius) {
@@ -91,6 +101,16 @@ function createCylinder(mass, position, rotation, scale) {
   cannonEngine.addVisual(cylinderBody);
   console.log("Create Cylinder:", cylinderBody);
   return cylinderBody.id;
+}
+
+function removeBody(bodyId) {
+  const body = world.bodies.find(b => b.id === bodyId);
+  if (body) {
+    cannonEngine.removeVisual(body);
+    world.removeBody(body);
+    osc.sendRemoveBody(bodyId);
+    console.log("Removed body:", bodyId);
+  }
 }
 
 function setupCreateMenu() {
@@ -134,6 +154,21 @@ function setupCreateMenu() {
         ),
     },
     "Create Box"
+  );
+  sceneMenuFolder.add(
+    {
+      ["Remove Last"]: () => {
+        // Find last non-ground body
+        const bodies = world.bodies;
+        for (let i = bodies.length - 1; i >= 0; i--) {
+          if (bodies[i].shapes[0].type !== 2) { // Not ground plane
+            removeBody(bodies[i].id);
+            break;
+          }
+        }
+      },
+    },
+    "Remove Last"
   );
 }
 

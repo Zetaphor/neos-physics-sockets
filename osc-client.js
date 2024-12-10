@@ -2,11 +2,18 @@ class ResonitePhysicsOSC extends EventTarget {
   port = 3333;
   host = "localhost";
   oscReady = false;
+  bodyStates = new Map(); // Track the last state of each body
 
   constructor() {
     super();
     this.output = document.getElementById("output");
     this.setupOSC();
+  }
+
+  // Helper to check if vectors are different (with small epsilon for floating point comparison)
+  vectorChanged(a, b, epsilon = 0.0001) {
+    if (!a || !b) return true;
+    return a.some((val, idx) => Math.abs(val - b[idx]) > epsilon);
   }
 
   async setupOSC() {
@@ -47,15 +54,43 @@ class ResonitePhysicsOSC extends EventTarget {
 
   sendPhysicsUpdate = (bodiesData) => {
     if (!this.oscReady) return;
-    this.sendOSCMessage("/bodiesUpdate", JSON.stringify(bodiesData));
+
+    Object.entries(bodiesData).forEach(([id, data]) => {
+      const lastState = this.bodyStates.get(id);
+      const positionChanged = !lastState || this.vectorChanged(data.position, lastState.position);
+      const rotationChanged = !lastState || this.vectorChanged(data.rotation, lastState.rotation);
+
+      // Only send updates if something changed
+      if (positionChanged || rotationChanged) {
+        // Send as raw values: /body/id/position x y z
+        // if (positionChanged) {
+        //   this.sendOSCMessage(`/body/${id}/position`, ...data.position);
+        // }
+        // // Send as raw values: /body/id/rotation x y z w
+        // if (rotationChanged) {
+        //   this.sendOSCMessage(`/body/${id}/rotation`, ...data.rotation);
+        // }
+
+        // Update the stored state
+        this.bodyStates.set(id, {
+          type: data.type,
+          position: [...data.position],
+          rotation: [...data.rotation]
+        });
+      }
+    });
   };
 
   sendRemoveBody = (id) => {
-    this.sendOSCMessage("/remove", id);
+    if (!this.oscReady) return;
+    // Send as raw value: /body/remove id
+    this.sendOSCMessage("/body/remove", parseInt(id));
+    this.bodyStates.delete(id);
   };
 
   sendWorldReset = () => {
     if (!this.oscReady) return;
+    this.bodyStates.clear(); // Clear stored states
     this.sendOSCMessage("/reset");
   };
 
@@ -71,11 +106,19 @@ class ResonitePhysicsOSC extends EventTarget {
     this.dispatchEvent(new CustomEvent("pauseWorld"));
   }
 
-  addedSimulationBody(id, type) {
-    this.sendOSCMessage("/addedBody", `${id}&${type}`);
+  addedSimulationBody(id, type, position, rotation) {
+    // Send as raw values: /body/create id type
+    this.sendOSCMessage("/body/create", parseInt(id), type);
+
+    // Initialize the body state tracking
+    this.bodyStates.set(id, {
+      type,
+      position: [...position],
+      rotation: [...rotation]
+    });
   }
 
-  async sendOSCMessage(address, message = "") {
+  async sendOSCMessage(address, ...messages) {
     if (!this.oscReady) return;
 
     try {
@@ -87,7 +130,7 @@ class ResonitePhysicsOSC extends EventTarget {
         },
         body: JSON.stringify({
           address,
-          message
+          message: messages // Send all arguments as an array
         })
       });
     } catch (error) {
