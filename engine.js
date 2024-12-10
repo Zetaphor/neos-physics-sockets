@@ -69,7 +69,15 @@ function createBody(type, mass, position, rotation, scale) {
 
 function createSphere(mass, position, rotation, radius) {
   const sphereShape = new CANNON.Sphere(radius);
-  const sphereBody = new CANNON.Body({ mass: mass });
+  const sphereBody = new CANNON.Body({
+    mass: mass,
+    material: world.defaultMaterial,
+    angularDamping: 0.5,
+    linearDamping: 0.3,
+    allowSleep: true,
+    sleepSpeedLimit: 0.1,
+    sleepTimeLimit: 0.5
+  });
   sphereBody.position.set(position.x, position.y, position.z);
   sphereBody.addShape(sphereShape);
   // sphereBody.quaternion.set(rotation);
@@ -81,7 +89,15 @@ function createSphere(mass, position, rotation, radius) {
 
 function createBox(mass, position, rotation, scale) {
   const boxShape = new CANNON.Box(new CANNON.Vec3(scale.x, scale.y, scale.z));
-  let boxBody = new CANNON.Body({ mass: mass });
+  let boxBody = new CANNON.Body({
+    mass: mass,
+    material: world.defaultMaterial,
+    angularDamping: 0.5,
+    linearDamping: 0.3,
+    allowSleep: true,
+    sleepSpeedLimit: 0.1,
+    sleepTimeLimit: 0.5
+  });
   boxBody.position.set(position.x, position.y, position.z);
   // boxBody.quaternion.set(rotation);
   boxBody.addShape(boxShape);
@@ -93,7 +109,15 @@ function createBox(mass, position, rotation, scale) {
 
 function createCylinder(mass, position, rotation, scale) {
   const cylinderShape = new CANNON.Cylinder(scale, scale, scale * 2.2, 10);
-  let cylinderBody = new CANNON.Body({ mass: mass });
+  let cylinderBody = new CANNON.Body({
+    mass: mass,
+    material: world.defaultMaterial,
+    angularDamping: 0.5,
+    linearDamping: 0.3,
+    allowSleep: true,
+    sleepSpeedLimit: 0.1,
+    sleepTimeLimit: 0.5
+  });
   cylinderBody.position.set(position.x, position.y, position.z);
   cylinderBody.addShape(cylinderShape);
   // cylinderBody.quaternion.set(rotation);
@@ -188,23 +212,37 @@ function setupWorld(cannonEngine) {
   const world = cannonEngine.getWorld();
   world.gravity.set(0, -50, 0);
 
+  // Enable sleeping
+  world.allowSleep = true;
+  world.sleepTimeLimit = 0.5;  // Time before body falls asleep (seconds)
+  world.sleepSpeedLimit = 0.1; // Speed limit below which body can sleep
+
+  const defaultMaterial = new CANNON.Material('default');
+
+  // Increase friction significantly
+  const defaultContactMaterial = new CANNON.ContactMaterial(
+    defaultMaterial,
+    defaultMaterial,
+    {
+      friction: 0.7,          // Increased from 0.3 to 0.7
+      restitution: 0.3,
+      contactEquationStiffness: 1e7,
+      contactEquationRelaxation: 4
+    }
+  );
+
+  world.addContactMaterial(defaultContactMaterial);
+  world.defaultContactMaterial = defaultContactMaterial;
+
   // Max solver iterations: Use more for better force propagation, but keep in mind that it's not very computationally cheap!
   world.solver.iterations = 5;
 
-  // Tweak contact properties.
-  // Contact stiffness - use to make softer/harder contacts
-  world.defaultContactMaterial.contactEquationStiffness = 1e7;
-
-  // Stabilization time in number of timesteps
-  world.defaultContactMaterial.contactEquationRelaxation = 4;
-
-  // Since we have many bodies and they don't move very much, we can use the less accurate quaternion normalization
-  // world.quatNormalizeFast = true;
-  // world.quatNormalizeSkip = 3; // ...and we do not have to normalize every step.
-
   // Static ground plane
   const groundShape = new CANNON.Plane();
-  const groundBody = new CANNON.Body({ mass: 0 });
+  const groundBody = new CANNON.Body({
+    mass: 0,
+    material: defaultMaterial
+  });
   groundBody.addShape(groundShape);
   groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
   world.addBody(groundBody);

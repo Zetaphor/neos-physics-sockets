@@ -63,13 +63,13 @@ class ResonitePhysicsOSC extends EventTarget {
       // Only send updates if something changed
       if (positionChanged || rotationChanged) {
         // Send as raw values: /body/id/position x y z
-        // if (positionChanged) {
-        //   this.sendOSCMessage(`/body/${id}/position`, ...data.position);
-        // }
-        // // Send as raw values: /body/id/rotation x y z w
-        // if (rotationChanged) {
-        //   this.sendOSCMessage(`/body/${id}/rotation`, ...data.rotation);
-        // }
+        if (positionChanged) {
+          this.sendOSCMessage(`/body/position`, parseInt(id), ...data.position);
+        }
+        // Send as raw values: /body/id/rotation x y z w
+        if (rotationChanged) {
+          this.sendOSCMessage(`/body/rotation`, parseInt(id), ...data.rotation);
+        }
 
         // Update the stored state
         this.bodyStates.set(id, {
