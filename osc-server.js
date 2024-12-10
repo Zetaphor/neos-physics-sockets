@@ -11,6 +11,7 @@ const router = new Router();
 const HTTP_PORT = 3000;
 const OSC_TARGET_HOST = '127.0.0.1'; // Change this to your target OSC server IP
 const OSC_TARGET_PORT = 9000; // Change this to your target OSC server port
+const OSC_LISTEN_PORT = 9001; // Port to listen for incoming OSC messages
 
 const bodyTypes = {
   "1": "sphere",
@@ -20,6 +21,18 @@ const bodyTypes = {
 
 // Create OSC client
 const oscClient = new osc.Client(OSC_TARGET_HOST, OSC_TARGET_PORT);
+
+// Create OSC server
+const oscServer = new osc.Server(OSC_LISTEN_PORT, '0.0.0.0');
+
+// Handle incoming OSC messages
+oscServer.on('message', (msg, rinfo) => {
+  const address = msg[0];
+  const args = msg.slice(1);
+  console.log(`Received OSC message from ${rinfo.address}:${rinfo.port}`);
+  console.log(`Address: ${address}`);
+  console.log(`Arguments:`, args);
+});
 
 // Enable CORS and body parsing
 app.use(cors());
@@ -55,5 +68,6 @@ app.use(router.routes());
 app.use(router.allowedMethods());
 
 app.listen(HTTP_PORT);
-console.log(`HTTP Server running on port ${HTTP_PORT}`);
+console.log(`HTTP Server running on port http://localhost:${HTTP_PORT}`);
 console.log(`Forwarding OSC messages to ${OSC_TARGET_HOST}:${OSC_TARGET_PORT}`);
+console.log(`Listening for OSC messages on port ${OSC_LISTEN_PORT}`);
