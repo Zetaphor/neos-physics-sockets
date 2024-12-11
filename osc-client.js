@@ -4,6 +4,8 @@ class ResonitePhysicsOSC extends EventTarget {
   oscReady = false;
   bodyStates = new Map(); // Track the last state of each body
   positionScale = 0.1; // Scale factor - adjust this value as needed
+  messageCount = 0;
+  ws = null;
 
   constructor() {
     super();
@@ -19,13 +21,26 @@ class ResonitePhysicsOSC extends EventTarget {
 
   async setupOSC() {
     try {
-      // We'll use a simple HTTP request to check if the OSC server is running
+      // Check if server is running
       const response = await fetch(`http://${this.host}:3000/status`);
       if (response.ok) {
-        this.oscReady = true;
-        this.updateStatus("Connected");
-        document.getElementById("oscOutputContainer").style.display = "block";
-        document.getElementById("resoniteMasterListen").style.display = "block";
+        // Initialize WebSocket connection
+        this.ws = new WebSocket(`ws://${this.host}:3000`);
+
+        this.ws.onopen = () => {
+          this.oscReady = true;
+          this.updateStatus("Connected");
+          document.getElementById("oscOutputContainer").style.display = "block";
+          document.getElementById("resoniteMasterListen").style.display = "block";
+        };
+
+        this.ws.onclose = () => {
+          this.handleError();
+        };
+
+        this.ws.onerror = () => {
+          this.handleError();
+        };
       }
     } catch (error) {
       this.handleError();
@@ -62,14 +77,11 @@ class ResonitePhysicsOSC extends EventTarget {
       const rotationChanged = !lastState || this.vectorChanged(data.rotation, lastState.rotation);
 
       if (positionChanged || rotationChanged) {
-        if (positionChanged) {
-          // Only scale the position when sending
-          const scaledPosition = data.position.map(val => val * this.positionScale);
-          this.sendOSCMessage(`/body/position`, parseInt(id), ...scaledPosition);
-        }
-        if (rotationChanged) {
-          this.sendOSCMessage(`/body/rotation`, parseInt(id), ...data.rotation);
-        }
+        const scaledPosition = data.position.map(val => val * this.positionScale);
+        // Send as raw values: /body/update id, x y z, x y z w
+
+        this.sendOSCMessage(`/body/update`, parseInt(this.messageCount), parseInt(id), ...scaledPosition, ...data.rotation);
+        this.messageCount++;
 
         // Store original unscaled values
         this.bodyStates.set(id, {
@@ -119,20 +131,13 @@ class ResonitePhysicsOSC extends EventTarget {
   }
 
   async sendOSCMessage(address, ...messages) {
-    if (!this.oscReady) return;
+    if (!this.oscReady || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
     try {
-      // We'll send OSC messages through our HTTP server which will forward them via OSC
-      await fetch(`http://${this.host}:3000/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          address,
-          message: messages // Send all arguments as an array
-        })
-      });
+      this.ws.send(JSON.stringify({
+        address,
+        message: messages
+      }));
     } catch (error) {
       console.error("Failed to send OSC message:", error);
       this.handleError();
