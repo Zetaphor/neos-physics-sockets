@@ -31,7 +31,6 @@ class ResonitePhysicsOSC extends EventTarget {
           this.oscReady = true;
           this.updateStatus("Connected");
           document.getElementById("oscOutputContainer").style.display = "block";
-          document.getElementById("resoniteMasterListen").style.display = "block";
         };
 
         this.ws.onclose = () => {
