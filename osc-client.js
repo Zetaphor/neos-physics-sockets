@@ -30,7 +30,6 @@ class ResonitePhysicsOSC extends EventTarget {
         this.ws.onopen = () => {
           this.oscReady = true;
           this.updateStatus("Connected");
-          document.getElementById("oscOutputContainer").style.display = "block";
         };
 
         this.ws.onclose = () => {
@@ -54,7 +53,6 @@ class ResonitePhysicsOSC extends EventTarget {
     this.oscReady = false;
     this.receivedWorldPause();
     document.getElementById("oscOutputContainer").style.display = "none";
-    document.getElementById("oscError").style.display = "block";
     document.getElementById("resoniteMasterDebug").style.display = "none";
   };
 
