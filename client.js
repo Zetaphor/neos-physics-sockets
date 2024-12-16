@@ -53,6 +53,11 @@ export class PhysicsClient extends EventTarget {
         this.updateBodies(data.bodies);
         break;
       case 'bodyCreated':
+        this.bodies.set(data.bodyId, {
+          type: data.bodyType,
+          position: data.position,
+          quaternion: data.quaternion
+        });
         this.dispatchEvent(new CustomEvent('bodyCreated', { detail: data }));
         break;
       case 'bodyRemoved':
@@ -83,6 +88,12 @@ export class PhysicsClient extends EventTarget {
   }
 
   createBody(type, mass, position, rotation, scale) {
+    // Ensure type is one of the valid types
+    if (!['box', 'sphere', 'cylinder'].includes(type)) {
+      console.error('Invalid body type:', type);
+      return;
+    }
+
     this.ws.send(JSON.stringify({
       type: 'createBody',
       bodyData: { type, mass, position, rotation, scale }
@@ -106,5 +117,9 @@ export class PhysicsClient extends EventTarget {
 
   resume() {
     this.ws.send(JSON.stringify({ type: 'resume' }));
+  }
+
+  getBody(id) {
+    return this.bodies.get(id);
   }
 }

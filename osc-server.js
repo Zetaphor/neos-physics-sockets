@@ -41,7 +41,7 @@ wss.on('connection', (ws) => {
       const { address, message } = JSON.parse(data.toString());
       const args = Array.isArray(message) ? message : [message];
       oscClient.send(address, ...args);
-      console.log(`Forwarded via WebSocket: ${address}`, message);
+      // console.log(`Forwarded via WebSocket: ${address}`, message);
     } catch (error) {
       console.error('Error processing WebSocket message:', error);
     }

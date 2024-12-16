@@ -90,7 +90,7 @@ class UnifiedServer {
           if (message.address) {
             const args = Array.isArray(message.message) ? message.message : [message.message];
             this.oscClient.send(message.address, ...args);
-            console.log(`Forwarded via WebSocket: ${message.address}`, message.message);
+            // console.log(`Forwarded via WebSocket: ${message.address}`, message.message);
           }
           // Handle physics messages
           else {
@@ -219,7 +219,7 @@ class PhysicsServer {
 
     if (body) {
       this.bodies.set(body.id, body);
-      this.broadcastBodyCreated(body);
+      this.broadcastBodyCreated(body, type);
     }
   }
 
@@ -358,10 +358,11 @@ class PhysicsServer {
     });
   }
 
-  broadcastBodyCreated(body) {
+  broadcastBodyCreated(body, bodyType) {
     this.broadcast({
       type: 'bodyCreated',
       bodyId: body.id,
+      bodyType: bodyType,
       position: [body.position.x, body.position.y, body.position.z],
       quaternion: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
     });

@@ -140,11 +140,14 @@ class PhysicsServer {
       case 'cylinder':
         body = this.createCylinder(mass, position, rotation, scale);
         break;
+      default:
+        console.error('Invalid body type:', type);
+        return;
     }
 
     if (body) {
       this.bodies.set(body.id, body);
-      this.broadcastBodyCreated(body);
+      this.broadcastBodyCreated(body, type);
     }
   }
 
@@ -185,7 +188,7 @@ class PhysicsServer {
   }
 
   createCylinder(mass, position, rotation, scale) {
-    const shape = new CANNON.Cylinder(scale, scale, scale * 2.2, 10);
+    const shape = new CANNON.Cylinder(scale, scale, scale * 2, 16);
     const body = new CANNON.Body({
       mass,
       material: this.world.defaultMaterial,
@@ -283,10 +286,11 @@ class PhysicsServer {
     });
   }
 
-  broadcastBodyCreated(body) {
+  broadcastBodyCreated(body, type) {
     this.broadcast({
       type: 'bodyCreated',
       bodyId: body.id,
+      bodyType: type,
       position: [body.position.x, body.position.y, body.position.z],
       quaternion: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
     });

@@ -83,11 +83,14 @@ export class EngineClient {
 
   setupPhysicsEvents() {
     this.physicsClient.addEventListener('bodyCreated', (event) => {
-      const { bodyId, position, quaternion } = event.detail;
-      this.createVisualBody(bodyId, position, quaternion);
+      console.log('bodyCreated', event.detail);
+      const { bodyId, bodyType, position, quaternion } = event.detail;
 
-      // Forward to OSC
-      this.osc.addedSimulationBody(bodyId, 'box', position, quaternion);
+      // Forward to OSC with correct body type
+      this.osc.addedSimulationBody(bodyId, bodyType, position, quaternion);
+
+      // Create visual body after the data is stored
+      this.createVisualBody(bodyId, position, quaternion, bodyType);
     });
 
     this.physicsClient.addEventListener('bodyRemoved', (event) => {
@@ -109,11 +112,31 @@ export class EngineClient {
     });
   }
 
-  createVisualBody(id, position, quaternion) {
-    const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const material = new THREE.MeshPhongMaterial({
+  createVisualBody(id, position, quaternion, bodyType) {
+    let geometry;
+    let material;
+
+    console.log('Creating visual body of type:', bodyType); // Add debug logging
+
+    // Default material with random color
+    material = new THREE.MeshPhongMaterial({
       color: Math.random() * 0xffffff
     });
+
+    // Create appropriate geometry based on body type
+    switch (bodyType) {
+      case 'sphere':
+        geometry = new THREE.SphereGeometry(1, 32, 32);
+        break;
+      case 'cylinder':
+        geometry = new THREE.CylinderGeometry(1, 1, 2, 32);
+        break;
+      case 'box':
+      default:
+        geometry = new THREE.BoxGeometry(2, 2, 2);
+        break;
+    }
+
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
