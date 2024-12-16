@@ -6,66 +6,93 @@ import { PhysicsClient } from "./client.js";
 
 export class EngineClient {
   constructor() {
-    this.renderWidth = 1600;
-    this.renderHeight = 800;
-    this.bodies = new Map(); // Map of body ID to THREE.Mesh
+    this.config = {
+      render: {
+        width: 1600,
+        height: 800
+      }
+    };
 
-    // Initialize Three.js scene
-    this.initThree();
+    this.bodies = new Map();
 
-    // Initialize physics client
-    this.physicsClient = new PhysicsClient();
-    this.setupPhysicsEvents();
-
-    // Initialize GUI
-    this.initGui();
-
-    // Start render loop
-    this.animate();
+    this.initThree()
+      .then(() => {
+        this.physicsClient = new PhysicsClient();
+        this.setupPhysicsEvents();
+        this.initGui();
+        this.animate();
+      })
+      .catch(error => {
+        console.error('Failed to initialize engine:', error);
+      });
   }
 
-  initThree() {
-    // Scene
+  async initThree() {
+    // Scene setup
     this.scene = new THREE.Scene();
 
-    // Camera
-    this.camera = new THREE.PerspectiveCamera(24, this.renderWidth / this.renderHeight, 5, 2000);
+    // Camera setup with config
+    this.camera = new THREE.PerspectiveCamera(
+      24,
+      this.config.render.width / this.config.render.height,
+      5,
+      2000
+    );
     this.camera.position.set(0, 20, 90);
     this.camera.lookAt(0, 0, 0);
 
-    // Renderer
+    // Renderer setup
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(this.renderWidth, this.renderHeight);
+    this.renderer.setSize(this.config.render.width, this.config.render.height);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    document.getElementById("canvasContainer").appendChild(this.renderer.domElement);
 
-    // Lights
+    const container = document.getElementById("canvasContainer");
+    if (!container) {
+      throw new Error("Canvas container not found");
+    }
+    container.appendChild(this.renderer.domElement);
+
+    this.setupLights();
+    this.setupControls();
+    this.setupStats();
+    this.setupGround();
+  }
+
+  setupLights() {
     const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
     this.scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
     dirLight.position.set(10, 10, 10);
     dirLight.castShadow = true;
-    dirLight.shadow.camera.near = 0.1;
-    dirLight.shadow.camera.far = 40;
-    dirLight.shadow.camera.right = 15;
-    dirLight.shadow.camera.left = -15;
-    dirLight.shadow.camera.top = 15;
-    dirLight.shadow.camera.bottom = -15;
-    dirLight.shadow.mapSize.width = 1024;
-    dirLight.shadow.mapSize.height = 1024;
-    this.scene.add(dirLight);
 
-    // Controls
+    // Shadow camera config
+    Object.assign(dirLight.shadow.camera, {
+      near: 0.1,
+      far: 40,
+      right: 15,
+      left: -15,
+      top: 15,
+      bottom: -15
+    });
+
+    dirLight.shadow.mapSize.set(1024, 1024);
+    this.scene.add(dirLight);
+  }
+
+  setupControls() {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+  }
 
-    // Stats
+  setupStats() {
     this.stats = new Stats();
-    document.getElementById("canvasContainer").appendChild(this.stats.dom);
+    const container = document.getElementById("canvasContainer");
+    container.appendChild(this.stats.dom);
+  }
 
-    // Ground plane
+  setupGround() {
     const groundGeometry = new THREE.PlaneGeometry(100, 100);
     const groundMaterial = new THREE.MeshPhongMaterial({
       color: 0x808080,
@@ -81,7 +108,6 @@ export class EngineClient {
 
   setupPhysicsEvents() {
     this.physicsClient.addEventListener('bodyCreated', (event) => {
-      console.log('bodyCreated', event.detail);
       const { bodyId, bodyType, position, quaternion } = event.detail;
 
       this.createVisualBody(bodyId, position, quaternion, bodyType);
@@ -106,8 +132,6 @@ export class EngineClient {
   createVisualBody(id, position, quaternion, bodyType) {
     let geometry;
     let material;
-
-    console.log('Creating visual body of type:', bodyType); // Add debug logging
 
     // Default material with random color
     material = new THREE.MeshPhongMaterial({
@@ -165,50 +189,40 @@ export class EngineClient {
 
   initGui() {
     this.gui = new dat.GUI();
-
     const createFolder = this.gui.addFolder('Create');
     createFolder.open();
 
-    createFolder.add({
-      'Create Box': () => {
-        this.physicsClient.createBody(
-          'box',
-          5,
-          { x: Math.random() * 10, y: 10 + Math.random() * 10, z: Math.random() * 10 },
-          { x: 0, y: 0, z: 0, w: 1 },
-          { x: 1, y: 1, z: 1 }
-        );
+    const createActions = {
+      box: {
+        mass: 5,
+        scale: { x: 1, y: 1, z: 1 }
+      },
+      sphere: {
+        mass: 5,
+        scale: 1
+      },
+      cylinder: {
+        mass: 5,
+        scale: 1
       }
-    }, 'Create Box');
+    };
+
+    Object.entries(createActions).forEach(([type, config]) => {
+      createFolder.add({
+        [`Create ${type}`]: () => {
+          this.physicsClient.createBody(
+            type,
+            config.mass,
+            this.getRandomPosition(),
+            { x: 0, y: 0, z: 0, w: 1 },
+            config.scale
+          );
+        }
+      }, `Create ${type}`);
+    });
 
     createFolder.add({
-      'Create Sphere': () => {
-        this.physicsClient.createBody(
-          'sphere',
-          5,
-          { x: Math.random() * 10, y: 10 + Math.random() * 10, z: Math.random() * 10 },
-          { x: 0, y: 0, z: 0, w: 1 },
-          1
-        );
-      }
-    }, 'Create Sphere');
-
-    createFolder.add({
-      'Create Cylinder': () => {
-        this.physicsClient.createBody(
-          'cylinder',
-          5,
-          { x: Math.random() * 10, y: 10 + Math.random() * 10, z: Math.random() * 10 },
-          { x: 0, y: 0, z: 0, w: 1 },
-          1
-        );
-      }
-    }, 'Create Cylinder');
-
-    createFolder.add({
-      'Reset World': () => {
-        this.physicsClient.resetWorld();
-      }
+      'Reset World': () => this.physicsClient.resetWorld()
     }, 'Reset World');
 
     createFolder.add({
@@ -219,6 +233,14 @@ export class EngineClient {
         }
       }
     }, 'Remove Last');
+  }
+
+  getRandomPosition() {
+    return {
+      x: Math.random() * 10,
+      y: 10 + Math.random() * 10,
+      z: Math.random() * 10
+    };
   }
 
   animate = () => {

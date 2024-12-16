@@ -9,33 +9,21 @@ const bodyTypes = {
   1: "sphere",
   2: "plane",
   4: "box",
-  16: "cylinder", // Internaly this is a convexpolyhedron
+  16: "cylinder"
 };
 
-window.addEventListener("worldReset", function () {
+window.addEventListener("worldReset", () => {
   console.log("Reset world");
 });
 
-window.addEventListener("worldUpdate", function () {
-  // let bodiesData = {};
-  // for (let i = 0; i < world.bodies.length; i++) {
-  //   const body = world.bodies[i];
-  //   if (body.shapes[0].type === 2) continue;
-  //   const bodyType = bodyTypes[body.shapes[0].type];
-  //   bodiesData[body.id] = {
-  //     type: bodyType,
-  //     position: [body.position.x, body.position.y, body.position.z],
-  //     rotation: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w],
-  //   };
-  // }
-  // osc.sendPhysicsUpdate(bodiesData);
-});
+window.removeEventListener("worldUpdate");
 
 function createBody(type, mass, position, rotation, scale) {
   let newBodyId = -1;
   if (type === "box") newBodyId = createBox(mass, position, rotation, scale);
   else if (type === "sphere") newBodyId = createSphere(mass, position, rotation, scale);
   else if (type === "cylinder") newBodyId = createCylinder(mass, position, rotation, scale);
+  return newBodyId;
 }
 
 function createSphere(mass, position, rotation, radius) {
@@ -110,60 +98,58 @@ function removeBody(bodyId) {
 function setupCreateMenu() {
   sceneMenuFolder = cannonEngine.gui.addFolder("Create");
   sceneMenuFolder.open();
-  sceneMenuFolder.add(
-    {
-      ["Create Sphere"]: () =>
-        createBody(
-          "sphere",
-          5,
-          { x: Math.random(10), y: Math.random(10) + 10, z: Math.random(10) },
-          { x: 0, y: 0, z: 0, w: 1 },
-          1
-        ),
-    },
-    "Create Sphere"
-  );
-  sceneMenuFolder.add(
-    {
-      ["Create Cylinder"]: () =>
-        createBody(
-          "cylinder",
-          5,
-          { x: Math.random(10), y: Math.random(10) + 10, z: Math.random(10) },
-          { x: 0, y: 0, z: 0, w: 1 },
-          1
-        ),
-    },
-    "Create Cylinder"
-  );
-  sceneMenuFolder.add(
-    {
-      ["Create Box"]: () =>
-        createBody(
-          "box",
-          5,
-          { x: Math.random(10), y: Math.random(10) + 10, z: Math.random(10) },
-          { x: 0, y: 0, z: 0, w: 1 },
-          { x: 1, y: 1, z: 1 }
-        ),
-    },
-    "Create Box"
-  );
-  sceneMenuFolder.add(
-    {
-      ["Remove Last"]: () => {
-        // Find last non-ground body
-        const bodies = world.bodies;
-        for (let i = bodies.length - 1; i >= 0; i--) {
-          if (bodies[i].shapes[0].type !== 2) { // Not ground plane
-            removeBody(bodies[i].id);
-            break;
-          }
-        }
+
+  const createFunctions = {
+    sphere: () => createBody(
+      "sphere",
+      5,
+      {
+        x: Math.random() * 10,
+        y: Math.random() * 10 + 10,
+        z: Math.random() * 10
       },
-    },
-    "Remove Last"
-  );
+      { x: 0, y: 0, z: 0, w: 1 },
+      1
+    ),
+    cylinder: () => createBody(
+      "cylinder",
+      5,
+      {
+        x: Math.random() * 10,
+        y: Math.random() * 10 + 10,
+        z: Math.random() * 10
+      },
+      { x: 0, y: 0, z: 0, w: 1 },
+      1
+    ),
+    box: () => createBody(
+      "box",
+      5,
+      {
+        x: Math.random() * 10,
+        y: Math.random() * 10 + 10,
+        z: Math.random() * 10
+      },
+      { x: 0, y: 0, z: 0, w: 1 },
+      { x: 1, y: 1, z: 1 }
+    )
+  };
+
+  Object.entries(createFunctions).forEach(([type, fn]) => {
+    sceneMenuFolder.add({ [`Create ${type}`]: fn }, `Create ${type}`);
+  });
+
+  sceneMenuFolder.add({
+    "Remove Last": () => {
+      const bodies = world.bodies;
+      for (let i = bodies.length - 1; i >= 0; i--) {
+        if (bodies[i].shapes[0].type !== 2) {
+          removeBody(bodies[i].id);
+          break;
+        }
+      }
+    }
+  }, "Remove Last");
 }
 
 function pauseWorld() {
@@ -232,77 +218,58 @@ function addEmptyScene() {
 function addDemoScene() {
   cannonEngine.addScene("Pile", () => {
     world = setupWorld(cannonEngine);
-    let interval;
-
-    // Plane -x
-    const planeShapeXmin = new CANNON.Plane();
-    const planeXmin = new CANNON.Body({ mass: 0 });
-    planeXmin.addShape(planeShapeXmin);
-    planeXmin.quaternion.setFromEuler(0, Math.PI / 2, 0);
-    planeXmin.position.set(-5, 0, 0);
-    world.addBody(planeXmin);
-
-    // Plane +x
-    const planeShapeXmax = new CANNON.Plane();
-    const planeXmax = new CANNON.Body({ mass: 0 });
-    planeXmax.addShape(planeShapeXmax);
-    planeXmax.quaternion.setFromEuler(0, -Math.PI / 2, 0);
-    planeXmax.position.set(5, 0, 0);
-    world.addBody(planeXmax);
-
-    // Plane -z
-    const planeShapeZmin = new CANNON.Plane();
-    const planeZmin = new CANNON.Body({ mass: 0 });
-    planeZmin.addShape(planeShapeZmin);
-    planeZmin.quaternion.setFromEuler(0, 0, 0);
-    planeZmin.position.set(0, 0, -5);
-    world.addBody(planeZmin);
-
-    // Plane +z
-    const planeShapeZmax = new CANNON.Plane();
-    const planeZmax = new CANNON.Body({ mass: 0 });
-    planeZmax.addShape(planeShapeZmax);
-    planeZmax.quaternion.setFromEuler(0, Math.PI, 0);
-    planeZmax.position.set(0, 0, 5);
-    world.addBody(planeZmax);
-
-    const size = 1;
-    const bodies = [];
-    let i = 0;
-    if (interval) clearInterval(interval);
-    interval = setInterval(() => {
-      if (cannonEngine.settings.paused) return;
-      if (cannonEngine.currentScene !== "Pile") return;
-
-      // Sphere
-      i++;
-      const sphereShape = new CANNON.Sphere(size);
-      const sphereBody = new CANNON.Body({
-        mass: 5,
-        position: new CANNON.Vec3(-size * 2 * Math.sin(i), size * 2 * 7, size * 2 * Math.cos(i)),
-      });
-      sphereBody.addShape(sphereShape);
-      world.addBody(sphereBody);
-      cannonEngine.addVisual(sphereBody);
-      bodies.push(sphereBody);
-
-      // Send creation event
-      // osc.addedSimulationBody(
-      //   sphereBody.id,
-      //   "sphere",
-      //   [sphereBody.position.x, sphereBody.position.y, sphereBody.position.z],
-      //   [sphereBody.quaternion.x, sphereBody.quaternion.y, sphereBody.quaternion.z, sphereBody.quaternion.w]
-      // );
-
-      if (bodies.length > 80) {
-        const bodyToKill = bodies.shift();
-        cannonEngine.removeVisual(bodyToKill);
-        world.removeBody(bodyToKill);
-        // Send removal event
-        // osc.sendRemoveBody(bodyToKill.id);
-      }
-    }, 100);
+    setupBoundaryPlanes();
+    startSpherePileSimulation();
   });
+}
+
+function setupBoundaryPlanes() {
+  const planeConfigs = [
+    { rotation: [0, Math.PI / 2, 0], position: [-5, 0, 0] },
+    { rotation: [0, -Math.PI / 2, 0], position: [5, 0, 0] },
+    { rotation: [0, 0, 0], position: [0, 0, -5] },
+    { rotation: [0, Math.PI, 0], position: [0, 0, 5] }
+  ];
+
+  planeConfigs.forEach(config => {
+    const planeBody = new CANNON.Body({ mass: 0 });
+    planeBody.addShape(new CANNON.Plane());
+    planeBody.quaternion.setFromEuler(...config.rotation);
+    planeBody.position.set(...config.position);
+    world.addBody(planeBody);
+  });
+}
+
+function startSpherePileSimulation() {
+  const size = 1;
+  const bodies = [];
+  let i = 0;
+
+  const interval = setInterval(() => {
+    if (cannonEngine.settings.paused || cannonEngine.currentScene !== "Pile") return;
+
+    i++;
+    const sphereBody = new CANNON.Body({
+      mass: 5,
+      position: new CANNON.Vec3(
+        -size * 2 * Math.sin(i),
+        size * 2 * 7,
+        size * 2 * Math.cos(i)
+      )
+    });
+    sphereBody.addShape(new CANNON.Sphere(size));
+    world.addBody(sphereBody);
+    cannonEngine.addVisual(sphereBody);
+    bodies.push(sphereBody);
+
+    if (bodies.length > 80) {
+      const bodyToKill = bodies.shift();
+      cannonEngine.removeVisual(bodyToKill);
+      world.removeBody(bodyToKill);
+    }
+  }, 100);
+
+  return () => clearInterval(interval);
 }
 
 addEmptyScene();

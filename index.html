@@ -4,6 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Resonite Physics Server Viewer - 3D physics simulation viewer" />
+  <meta name="theme-color" content="#1a1a1a" />
   <title>Resonite Physics Server Viewer</title>
 </head>
 <style>
@@ -12,9 +14,10 @@
     margin: 0;
     padding: 0;
     overflow: hidden;
-    font-family: Arial, sans-serif;
+    font-family: system-ui, -apple-system, Arial, sans-serif;
     background: #1a1a1a;
     color: #ffffff;
+    height: 100%;
   }
 
   #canvasContainer {
@@ -32,7 +35,11 @@
   <script type="module">
     import { EngineClient } from './engine-client.js';
     window.addEventListener('DOMContentLoaded', () => {
-      const engine = new EngineClient();
+      try {
+        const engine = new EngineClient();
+      } catch (error) {
+        console.error('Failed to initialize engine:', error);
+      }
     });
   </script>
 </body>
