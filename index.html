@@ -130,7 +130,12 @@
     </div>
   </div>
 
-  <script type="module" src="engine.js"></script>
+  <script type="module">
+    import { EngineClient } from './engine-client.js';
+    window.addEventListener('DOMContentLoaded', () => {
+      const engine = new EngineClient();
+    });
+  </script>
 </body>
 
 </html>

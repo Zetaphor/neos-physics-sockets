@@ -1,11 +1,16 @@
-const Koa = require('koa');
-const bodyParser = require('koa-bodyparser');
-const cors = require('@koa/cors');
-const serve = require('koa-static');
-const Router = require('@koa/router');
-const osc = require('node-osc');
-const WebSocket = require('ws');
-const http = require('http');
+import Koa from 'koa';
+import bodyParser from 'koa-bodyparser';
+import cors from '@koa/cors';
+import serve from 'koa-static';
+import Router from '@koa/router';
+import { Server as OscServer, Client as OscClient } from 'node-osc';
+import { WebSocketServer } from 'ws';
+import http from 'http';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = new Koa();
 const router = new Router();
@@ -19,13 +24,13 @@ const OSC_LISTEN_PORT = 9001;
 const server = http.createServer(app.callback());
 
 // Create WebSocket server attached to the HTTP server
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 
 // Create OSC client
-const oscClient = new osc.Client(OSC_TARGET_HOST, OSC_TARGET_PORT);
+const oscClient = new OscClient(OSC_TARGET_HOST, OSC_TARGET_PORT);
 
 // Create OSC server
-const oscServer = new osc.Server(OSC_LISTEN_PORT, '0.0.0.0');
+const oscServer = new OscServer(OSC_LISTEN_PORT, '0.0.0.0');
 
 // Handle WebSocket connections
 wss.on('connection', (ws) => {
