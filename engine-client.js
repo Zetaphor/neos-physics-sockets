@@ -3,14 +3,12 @@ import Stats from "/libs/stats.module.js";
 import * as dat from "/libs/dat.gui.module.js";
 import { OrbitControls } from "/libs/OrbitControls.js";
 import { PhysicsClient } from "./client.js";
-import { ResonitePhysicsOSC } from "/osc-client.js";
 
 export class EngineClient {
   constructor() {
     this.renderWidth = 1600;
     this.renderHeight = 800;
     this.bodies = new Map(); // Map of body ID to THREE.Mesh
-    this.osc = new ResonitePhysicsOSC();
 
     // Initialize Three.js scene
     this.initThree();
@@ -86,19 +84,12 @@ export class EngineClient {
       console.log('bodyCreated', event.detail);
       const { bodyId, bodyType, position, quaternion } = event.detail;
 
-      // Forward to OSC with correct body type
-      this.osc.addedSimulationBody(bodyId, bodyType, position, quaternion);
-
-      // Create visual body after the data is stored
       this.createVisualBody(bodyId, position, quaternion, bodyType);
     });
 
     this.physicsClient.addEventListener('bodyRemoved', (event) => {
       const { bodyId } = event.detail;
       this.removeVisualBody(bodyId);
-
-      // Forward to OSC
-      this.osc.sendRemoveBody(bodyId);
     });
 
     this.physicsClient.addEventListener('bodyUpdated', (event) => {
@@ -236,15 +227,5 @@ export class EngineClient {
     this.controls.update();
     this.stats.update();
     this.renderer.render(this.scene, this.camera);
-
-    // Forward physics state to OSC
-    const bodiesData = {};
-    for (const [id, mesh] of this.bodies) {
-      bodiesData[id] = {
-        position: [mesh.position.x, mesh.position.y, mesh.position.z],
-        rotation: [mesh.quaternion.x, mesh.quaternion.y, mesh.quaternion.z, mesh.quaternion.w]
-      };
-    }
-    this.osc.sendPhysicsUpdate(bodiesData);
   };
 }

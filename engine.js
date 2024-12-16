@@ -1,10 +1,8 @@
 import * as CANNON from "/libs/cannon-es.js";
 import { Engine } from "/cannon-engine.js";
-import { ResonitePhysicsOSC } from "/osc-client.js";
 
 const cannonEngine = new Engine();
 let world;
-const osc = new ResonitePhysicsOSC();
 let sceneMenuFolder;
 
 const bodyTypes = {
@@ -15,38 +13,22 @@ const bodyTypes = {
 };
 
 window.addEventListener("worldReset", function () {
-  osc.sendWorldReset();
   console.log("Reset world");
 });
 
 window.addEventListener("worldUpdate", function () {
-  let bodiesData = {};
-  for (let i = 0; i < world.bodies.length; i++) {
-    const body = world.bodies[i];
-    if (body.shapes[0].type === 2) continue; // Don't send updates for the ground plane
-    const bodyType = bodyTypes[body.shapes[0].type];
-    bodiesData[body.id] = {
-      type: bodyType,
-      position: [body.position.x, body.position.y, body.position.z],
-      rotation: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w],
-    };
-  }
-  osc.sendPhysicsUpdate(bodiesData);
-});
-
-osc.addEventListener("resetWorld", function () {
-  console.log("Reset world from websocket");
-  resetWorld();
-});
-
-osc.addEventListener("pauseWorld", function () {
-  pauseWorld();
-  console.log("Pause world from websocket");
-});
-
-osc.addEventListener("resumeWorld", function () {
-  resumeWorld();
-  console.log("Resume world from websocket");
+  // let bodiesData = {};
+  // for (let i = 0; i < world.bodies.length; i++) {
+  //   const body = world.bodies[i];
+  //   if (body.shapes[0].type === 2) continue;
+  //   const bodyType = bodyTypes[body.shapes[0].type];
+  //   bodiesData[body.id] = {
+  //     type: bodyType,
+  //     position: [body.position.x, body.position.y, body.position.z],
+  //     rotation: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w],
+  //   };
+  // }
+  // osc.sendPhysicsUpdate(bodiesData);
 });
 
 function createBody(type, mass, position, rotation, scale) {
@@ -54,17 +36,6 @@ function createBody(type, mass, position, rotation, scale) {
   if (type === "box") newBodyId = createBox(mass, position, rotation, scale);
   else if (type === "sphere") newBodyId = createSphere(mass, position, rotation, scale);
   else if (type === "cylinder") newBodyId = createCylinder(mass, position, rotation, scale);
-
-  // Get the created body to access its current position and rotation
-  const body = world.bodies.find(b => b.id === newBodyId);
-  if (body) {
-    osc.addedSimulationBody(
-      newBodyId,
-      type,
-      [body.position.x, body.position.y, body.position.z],
-      [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
-    );
-  }
 }
 
 function createSphere(mass, position, rotation, radius) {
@@ -132,7 +103,6 @@ function removeBody(bodyId) {
   if (body) {
     cannonEngine.removeVisual(body);
     world.removeBody(body);
-    osc.sendRemoveBody(bodyId);
     console.log("Removed body:", bodyId);
   }
 }
@@ -317,19 +287,19 @@ function addDemoScene() {
       bodies.push(sphereBody);
 
       // Send creation event
-      osc.addedSimulationBody(
-        sphereBody.id,
-        "sphere",
-        [sphereBody.position.x, sphereBody.position.y, sphereBody.position.z],
-        [sphereBody.quaternion.x, sphereBody.quaternion.y, sphereBody.quaternion.z, sphereBody.quaternion.w]
-      );
+      // osc.addedSimulationBody(
+      //   sphereBody.id,
+      //   "sphere",
+      //   [sphereBody.position.x, sphereBody.position.y, sphereBody.position.z],
+      //   [sphereBody.quaternion.x, sphereBody.quaternion.y, sphereBody.quaternion.z, sphereBody.quaternion.w]
+      // );
 
       if (bodies.length > 80) {
         const bodyToKill = bodies.shift();
         cannonEngine.removeVisual(bodyToKill);
         world.removeBody(bodyToKill);
         // Send removal event
-        osc.sendRemoveBody(bodyToKill.id);
+        // osc.sendRemoveBody(bodyToKill.id);
       }
     }, 100);
   });

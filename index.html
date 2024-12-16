@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Physics Test</title>
+  <title>Resonite Physics Server Viewer</title>
 </head>
 <style>
   html,
@@ -17,76 +17,6 @@
     color: #ffffff;
   }
 
-  #info {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    padding: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    border-radius: 0 0 10px 0;
-    z-index: 100;
-  }
-
-  .status-container {
-    display: flex;
-    align-items: center;
-    margin-bottom: 15px;
-  }
-
-  .status-label {
-    font-weight: bold;
-    margin-right: 10px;
-  }
-
-  .status-value {
-    padding: 4px 8px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .status-connected {
-    color: #4CAF50;
-  }
-
-  .status-disconnected {
-    color: #f44336;
-  }
-
-  .error-message {
-    color: #f44336;
-    background: rgba(244, 67, 54, 0.1);
-    padding: 10px;
-    border-radius: 4px;
-    margin: 10px 0;
-    display: none;
-  }
-
-  #debug-controls {
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  button {
-    background: #2196F3;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-right: 10px;
-    margin-bottom: 10px;
-    transition: background 0.2s;
-  }
-
-  button:hover {
-    background: #1976D2;
-  }
-
-  button:active {
-    background: #0D47A1;
-  }
-
   #canvasContainer {
     position: fixed;
     width: 100vw;
@@ -94,41 +24,10 @@
     left: 0;
     top: 0;
   }
-
-  #oscOutputContainer {
-    display: none;
-    margin-top: 15px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
-
-  #resoniteOutputContainer {
-    display: none;
-    margin-top: 15px;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-  }
 </style>
 
 <body>
   <div id="canvasContainer"></div>
-
-  <div id="info">
-    <div class="status-container">
-      <span class="status-label">OSC Status:</span>
-      <span id="oscStatus" class="status-value status-disconnected">Disconnected</span>
-    </div>
-
-    <p id="oscError" class="error-message">There was an error connecting to the OSC server</p>
-
-    <div id="debug-controls">
-      <div id="resoniteMasterDebug">
-        <button id="resoniteTestBody" onclick="createTestBody()">Create Test Body</button>
-      </div>
-    </div>
-  </div>
 
   <script type="module">
     import { EngineClient } from './engine-client.js';
