@@ -41,11 +41,9 @@ export class EngineClient {
     this.camera.position.set(0, 20, 90);
     this.camera.lookAt(0, 0, 0);
 
-    // Renderer setup
+    // Renderer setup - removed shadow mapping
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(this.config.render.width, this.config.render.height);
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const container = document.getElementById("canvasContainer");
     if (!container) {
@@ -60,25 +58,9 @@ export class EngineClient {
   }
 
   setupLights() {
-    const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+    // Single bright ambient light for uniform illumination
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
     this.scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(10, 10, 10);
-    dirLight.castShadow = true;
-
-    // Shadow camera config
-    Object.assign(dirLight.shadow.camera, {
-      near: 0.1,
-      far: 40,
-      right: 15,
-      left: -15,
-      top: 15,
-      bottom: -15
-    });
-
-    dirLight.shadow.mapSize.set(1024, 1024);
-    this.scene.add(dirLight);
   }
 
   setupControls() {
@@ -94,7 +76,7 @@ export class EngineClient {
 
   setupGround() {
     const groundGeometry = new THREE.PlaneGeometry(100, 100);
-    const groundMaterial = new THREE.MeshPhongMaterial({
+    const groundMaterial = new THREE.MeshBasicMaterial({
       color: 0x808080,
       transparent: true,
       opacity: 0.4,
@@ -102,7 +84,6 @@ export class EngineClient {
     });
     this.groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
     this.groundMesh.rotation.x = -Math.PI / 2;
-    this.groundMesh.receiveShadow = true;
     this.scene.add(this.groundMesh);
   }
 
@@ -133,9 +114,12 @@ export class EngineClient {
     let geometry;
     let material;
 
-    // Default material with random color
-    material = new THREE.MeshPhongMaterial({
-      color: Math.random() * 0xffffff
+    const color = Math.random() * 0xffffff;
+
+    // Always use MeshBasicMaterial for simple rendering
+    material = new THREE.MeshBasicMaterial({
+      color: color,
+      wireframe: this.wireframeEnabled
     });
 
     // Create appropriate geometry based on body type
@@ -153,9 +137,6 @@ export class EngineClient {
     }
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-
     mesh.position.fromArray(position);
     mesh.quaternion.fromArray(quaternion);
 
@@ -192,6 +173,24 @@ export class EngineClient {
     const createFolder = this.gui.addFolder('Create');
     createFolder.open();
 
+    // Add new display settings folder
+    const displayFolder = this.gui.addFolder('Display');
+    displayFolder.open();
+
+    // Add wireframe toggle configuration
+    const displaySettings = {
+      'Wireframe': false
+    };
+
+    // Simplified wireframe toggle
+    displayFolder.add(displaySettings, 'Wireframe').onChange((wireframeEnabled) => {
+      this.wireframeEnabled = wireframeEnabled;
+      // Update all existing bodies
+      for (const mesh of this.bodies.values()) {
+        mesh.material.wireframe = wireframeEnabled;
+      }
+    });
+
     const createActions = {
       box: {
         mass: 5,
@@ -206,6 +205,8 @@ export class EngineClient {
         scale: 1
       }
     };
+
+    this.wireframeEnabled = false;
 
     Object.entries(createActions).forEach(([type, config]) => {
       createFolder.add({
