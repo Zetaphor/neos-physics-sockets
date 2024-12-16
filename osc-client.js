@@ -77,7 +77,7 @@ class ResonitePhysicsOSC extends EventTarget {
         const scaledPosition = data.position.map(val => val * this.positionScale);
         // Send as raw values: /body/update id, x y z, x y z w
 
-        this.sendOSCMessage(`/body/update`, parseInt(this.messageCount), parseInt(id), ...scaledPosition, ...data.rotation);
+        this.sendOSCMessage(`/body/${parseInt(id)}/transform`, ...scaledPosition, ...data.rotation);
         this.messageCount++;
 
         // Store original unscaled values
