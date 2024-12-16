@@ -70,8 +70,34 @@ export class EngineClient {
 
   setupStats() {
     this.stats = new Stats();
-    const container = document.getElementById("canvasContainer");
-    container.appendChild(this.stats.dom);
+
+    // Add custom panel for body count with 200ms time span
+    this.bodiesStatsPanel = this.stats.addPanel(
+      new Stats.Panel("Bodies", "#fffd00", "#838200")
+    );
+
+    // Style the stats container - added transform scale
+    this.stats.dom.style.cssText = 'position:absolute;top:0;left:0;transform:scale(0.5);transform-origin:top left;';
+
+    // Show all panels (FPS = 0, MS = 1, MB = 2, Bodies = 3)
+    const statsPanels = this.stats.dom.children;
+
+    // Style each panel to display side by side
+    Array.from(statsPanels).forEach((panel, index) => {
+      if (index <= 1 || panel === this.bodiesStatsPanel.dom) {  // Show FPS, MS, and Bodies panels
+        panel.style.cssText = 'position:relative !important;float:left;margin-left:0;margin-right:0;';
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    });
+
+    // Prevent the click handler that cycles through panels
+    this.stats.dom.addEventListener('click', (event) => {
+      event.stopPropagation();
+    }, true);
+
+    document.getElementById("canvasContainer").appendChild(this.stats.dom);
   }
 
   setupGround() {
@@ -170,16 +196,23 @@ export class EngineClient {
 
   initGui() {
     this.gui = new dat.GUI();
+
+    // Create folder
     const createFolder = this.gui.addFolder('Create');
     createFolder.open();
 
-    // Add new display settings folder
+    // Display folder
     const displayFolder = this.gui.addFolder('Display');
     displayFolder.open();
 
+    // World Controls folder
+    const worldFolder = this.gui.addFolder('World Controls');
+    worldFolder.open();
+
     // Add wireframe toggle configuration
     const displaySettings = {
-      'Wireframe': false
+      'Wireframe': false,
+      'Pause Render': false
     };
 
     // Simplified wireframe toggle
@@ -189,6 +222,11 @@ export class EngineClient {
       for (const mesh of this.bodies.values()) {
         mesh.material.wireframe = wireframeEnabled;
       }
+    });
+
+    // Add render pause toggle
+    displayFolder.add(displaySettings, 'Pause Render').onChange((pauseRender) => {
+      this.renderPaused = pauseRender;
     });
 
     const createActions = {
@@ -207,7 +245,9 @@ export class EngineClient {
     };
 
     this.wireframeEnabled = false;
+    this.renderPaused = false;
 
+    // Create buttons
     Object.entries(createActions).forEach(([type, config]) => {
       createFolder.add({
         [`Create ${type}`]: () => {
@@ -222,11 +262,12 @@ export class EngineClient {
       }, `Create ${type}`);
     });
 
-    createFolder.add({
+    // World control buttons
+    worldFolder.add({
       'Reset World': () => this.physicsClient.resetWorld()
     }, 'Reset World');
 
-    createFolder.add({
+    worldFolder.add({
       'Remove Last': () => {
         const lastId = Array.from(this.bodies.keys()).pop();
         if (lastId !== undefined) {
@@ -248,7 +289,15 @@ export class EngineClient {
     requestAnimationFrame(this.animate);
 
     this.controls.update();
-    this.stats.update();
-    this.renderer.render(this.scene, this.camera);
+
+    // Update stats
+    this.stats.begin();
+    this.bodiesStatsPanel.update(this.bodies.size, 100); // Reduced max value for better scale
+    this.stats.end();
+
+    // Only render if not paused
+    if (!this.renderPaused) {
+      this.renderer.render(this.scene, this.camera);
+    }
   };
 }
