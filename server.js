@@ -15,10 +15,45 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Configuration
-const HTTP_PORT = 3000;
-const OSC_TARGET_HOST = '127.0.0.1';
-const OSC_TARGET_PORT = 9000;
-const OSC_LISTEN_PORT = 9001;
+const CONFIG = {
+  HTTP_PORT: 3000,
+  OSC: {
+    TARGET_HOST: '127.0.0.1',
+    TARGET_PORT: 9000,
+    LISTEN_PORT: 9001
+  },
+  PHYSICS: {
+    FRAME_RATE: 60,
+    GRAVITY: -50,
+    SLEEP: {
+      TIME_LIMIT: 0.5,
+      SPEED_LIMIT: 0.1
+    }
+  }
+};
+
+/**
+ * Expected message formats:
+ *
+ * OSC Message:
+ * {
+ *   address: string,
+ *   message: any[] | any
+ * }
+ *
+ * Physics Messages:
+ * {
+ *   type: 'createBody' | 'removeBody' | 'resetWorld' | 'pause' | 'resume',
+ *   bodyData?: {
+ *     type: 'box' | 'sphere' | 'cylinder',
+ *     mass: number,
+ *     position: { x: number, y: number, z: number },
+ *     rotation: { x: number, y: number, z: number },
+ *     scale: { x: number, y: number, z: number }
+ *   },
+ *   bodyId?: string
+ * }
+ */
 
 class UnifiedServer {
   constructor() {
@@ -68,10 +103,10 @@ class UnifiedServer {
 
   setupOSC() {
     // Create OSC client
-    this.oscClient = new OscClient(OSC_TARGET_HOST, OSC_TARGET_PORT);
+    this.oscClient = new OscClient(CONFIG.OSC.TARGET_HOST, CONFIG.OSC.TARGET_PORT);
 
     // Create OSC server
-    this.oscServer = new OscServer(OSC_LISTEN_PORT, '0.0.0.0');
+    this.oscServer = new OscServer(CONFIG.OSC.LISTEN_PORT, '0.0.0.0');
 
     // Handle incoming OSC messages
     this.oscServer.on('message', (msg, rinfo) => {
@@ -86,7 +121,6 @@ class UnifiedServer {
   setupPhysics() {
     this.physicsServer = new PhysicsServer(this.wss);
 
-    // Handle WebSocket connections for both physics and OSC
     this.wss.on('connection', (ws) => {
       console.log('Client connected');
       this.physicsServer.addClient(ws);
@@ -95,15 +129,25 @@ class UnifiedServer {
         try {
           const message = JSON.parse(data);
 
+          // Validate message structure
+          if (typeof message !== 'object' || message === null) {
+            throw new Error('Invalid message format');
+          }
+
           // Handle OSC messages
           if (message.address) {
+            if (typeof message.address !== 'string') {
+              throw new Error('Invalid OSC address format');
+            }
             const args = Array.isArray(message.message) ? message.message : [message.message];
             this.oscClient.send(message.address, ...args);
-            // console.log(`Forwarded via WebSocket: ${message.address}`, message.message);
           }
           // Handle physics messages
-          else {
+          else if (message.type) {
             this.physicsServer.handleClientMessage(ws, message);
+          }
+          else {
+            throw new Error('Message missing required fields');
           }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
@@ -122,12 +166,29 @@ class UnifiedServer {
   }
 
   start() {
-    this.server.listen(HTTP_PORT, () => {
-      console.log(`Unified server running on port ${HTTP_PORT}`);
-      console.log(`WebSocket server running on ws://localhost:${HTTP_PORT}`);
-      console.log(`OSC forwarding to ${OSC_TARGET_HOST}:${OSC_TARGET_PORT}`);
-      console.log(`Listening for OSC messages on port ${OSC_LISTEN_PORT}`);
+    this.server.listen(CONFIG.HTTP_PORT, () => {
+      console.log(`Unified server running on port ${CONFIG.HTTP_PORT}`);
+      console.log(`WebSocket server running on ws://localhost:${CONFIG.HTTP_PORT}`);
+      console.log(`OSC forwarding to ${CONFIG.OSC.TARGET_HOST}:${CONFIG.OSC.TARGET_PORT}`);
+      console.log(`Listening for OSC messages on port ${CONFIG.OSC.LISTEN_PORT}`);
     });
+  }
+
+  shutdown() {
+    // Close WebSocket connections
+    this.wss.clients.forEach(client => {
+      client.close();
+    });
+
+    // Close OSC connections
+    this.oscServer.close();
+    this.oscClient.close();
+
+    // Close HTTP server
+    this.server.close();
+
+    // Stop physics loop
+    this.physicsServer.shutdown();
   }
 }
 
@@ -137,7 +198,7 @@ class PhysicsServer {
     this.world = this.setupWorld();
     this.bodies = new Map();
     this.lastTime = process.hrtime.bigint();
-    this.physicsFrameRate = 60;
+    this.physicsFrameRate = CONFIG.PHYSICS.FRAME_RATE;
     this.paused = false;
 
     // Start physics loop
@@ -146,12 +207,12 @@ class PhysicsServer {
 
   setupWorld() {
     const world = new CANNON.World();
-    world.gravity.set(0, -50, 0);
+    world.gravity.set(0, CONFIG.PHYSICS.GRAVITY, 0);
 
     // Enable sleeping
     world.allowSleep = true;
-    world.sleepTimeLimit = 0.5;
-    world.sleepSpeedLimit = 0.1;
+    world.sleepTimeLimit = CONFIG.PHYSICS.SLEEP.TIME_LIMIT;
+    world.sleepSpeedLimit = CONFIG.PHYSICS.SLEEP.SPEED_LIMIT;
 
     const defaultMaterial = new CANNON.Material('default');
     const defaultContactMaterial = new CANNON.ContactMaterial(
@@ -192,8 +253,17 @@ class PhysicsServer {
   }
 
   handleClientMessage(ws, data) {
+    if (!data.type) {
+      console.error('Invalid message format: missing type');
+      return;
+    }
+
     switch (data.type) {
       case 'createBody':
+        if (!data.bodyData) {
+          console.error('Invalid createBody message: missing bodyData');
+          return;
+        }
         this.createBody(data.bodyData);
         break;
       case 'removeBody':
@@ -208,10 +278,17 @@ class PhysicsServer {
       case 'resume':
         this.resume();
         break;
+      default:
+        console.warn(`Unknown message type: ${data.type}`);
     }
   }
 
   createBody({ type, mass, position, rotation, scale }) {
+    if (!type || !position || mass == null) {
+      console.error('Invalid body creation parameters');
+      return;
+    }
+
     let body;
 
     switch (type) {
@@ -394,6 +471,13 @@ class PhysicsServer {
 
   broadcastResume() {
     this.broadcast({ type: 'resume' });
+  }
+
+  shutdown() {
+    this.paused = true;
+    this.clients.clear();
+    this.bodies.clear();
+    // Clear any pending timeouts/intervals
   }
 }
 
