@@ -9,6 +9,7 @@ import Router from '@koa/router';
 import { Server as OscServer, Client as OscClient } from 'node-osc';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,7 +47,15 @@ class UnifiedServer {
     // Middleware
     this.app.use(cors());
     this.app.use(bodyParser());
-    this.app.use(serve(__dirname));
+
+    // Serve static files from the interface directory
+    this.app.use(serve(path.join(__dirname, 'interface')));
+
+    // Redirect root to index.html
+    this.router.get('/', async (ctx) => {
+      ctx.redirect('/index.html');
+    });
+
     this.app.use(this.router.routes());
     this.app.use(this.router.allowedMethods());
 
