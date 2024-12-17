@@ -246,7 +246,20 @@ class PhysicsServer {
 
   addClient(ws) {
     this.clients.add(ws);
-    this.sendWorldState(ws);
+    // Send initial state with special type
+    ws.send(JSON.stringify({
+      type: 'initialState',
+      bodies: Object.fromEntries(
+        Array.from(this.bodies.entries()).map(([id, body]) => [
+          id,
+          {
+            type: body.userData?.type || 'box',
+            position: [body.position.x, body.position.y, body.position.z],
+            quaternion: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
+          }
+        ])
+      )
+    }));
   }
 
   removeClient(ws) {
@@ -305,6 +318,7 @@ class PhysicsServer {
     }
 
     if (body) {
+      body.userData = { type };
       this.bodies.set(body.id, body);
       this.broadcastBodyCreated(body, type);
     }
@@ -440,7 +454,8 @@ class PhysicsServer {
     this.bodies.forEach((body, id) => {
       state[id] = {
         position: [body.position.x, body.position.y, body.position.z],
-        quaternion: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
+        quaternion: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w],
+        type: body.userData?.type || 'box'
       };
     });
     return state;

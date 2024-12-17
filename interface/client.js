@@ -49,26 +49,56 @@ export class PhysicsClient extends EventTarget {
 
   handleServerMessage(data) {
     switch (data.type) {
+      case 'initialState':
+        // Create all existing bodies from initial state
+        Object.entries(data.bodies).forEach(([id, state]) => {
+          this.bodies.set(id, {
+            type: state.type,
+            position: state.position,
+            quaternion: state.quaternion
+          });
+
+          this.dispatchEvent(new CustomEvent('bodyCreated', {
+            detail: {
+              bodyId: id,
+              bodyType: state.type,
+              position: state.position,
+              quaternion: state.quaternion
+            }
+          }));
+        });
+        break;
+
       case 'worldState':
+        // Only update positions of existing bodies
         this.updateBodies(data.bodies);
         break;
+
       case 'bodyCreated':
-        this.bodies.set(data.bodyId, {
-          type: data.bodyType,
-          position: data.position,
-          quaternion: data.quaternion
-        });
-        this.dispatchEvent(new CustomEvent('bodyCreated', { detail: data }));
+        if (!this.bodies.has(data.bodyId)) {
+          this.bodies.set(data.bodyId, {
+            type: data.bodyType,
+            position: data.position,
+            quaternion: data.quaternion
+          });
+          this.dispatchEvent(new CustomEvent('bodyCreated', { detail: data }));
+        }
         break;
+
       case 'bodyRemoved':
+        this.bodies.delete(data.bodyId);
         this.dispatchEvent(new CustomEvent('bodyRemoved', { detail: data }));
         break;
+
       case 'worldReset':
+        this.bodies.clear();
         this.dispatchEvent(new CustomEvent('worldReset'));
         break;
+
       case 'pause':
         this.dispatchEvent(new CustomEvent('pause'));
         break;
+
       case 'resume':
         this.dispatchEvent(new CustomEvent('resume'));
         break;
