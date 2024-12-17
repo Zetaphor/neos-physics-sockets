@@ -205,10 +205,6 @@ export class EngineClient {
     const displayFolder = this.gui.addFolder('Display');
     displayFolder.open();
 
-    // World Controls folder
-    const worldFolder = this.gui.addFolder('World Controls');
-    worldFolder.open();
-
     // Add wireframe toggle configuration
     const displaySettings = {
       'Wireframe': false,
@@ -262,12 +258,25 @@ export class EngineClient {
       }, `Create ${type}`);
     });
 
-    // World control buttons
-    worldFolder.add({
-      'Reset World': () => this.physicsClient.resetWorld()
-    }, 'Reset World');
+    // Add simulation controls folder
+    const simFolder = this.gui.addFolder('Simulation');
 
-    worldFolder.add({
+    const pauseControl = {
+      paused: false,
+      togglePause: () => {
+        if (pauseControl.paused) {
+          this.physicsClient.resume();
+        } else {
+          this.physicsClient.pause();
+        }
+        pauseControl.paused = !pauseControl.paused;
+      }
+    };
+
+    simFolder.add(pauseControl, 'togglePause')
+      .name('Pause/Resume');
+
+    simFolder.add({
       'Remove Last': () => {
         const lastId = Array.from(this.bodies.keys()).pop();
         if (lastId !== undefined) {
@@ -275,6 +284,11 @@ export class EngineClient {
         }
       }
     }, 'Remove Last');
+
+    simFolder.add({ reset: () => this.physicsClient.resetWorld() }, 'reset')
+      .name('Reset World');
+
+    simFolder.open();
   }
 
   getRandomPosition() {

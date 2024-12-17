@@ -119,7 +119,7 @@ class UnifiedServer {
   }
 
   setupPhysics() {
-    this.physicsServer = new PhysicsServer(this.wss);
+    this.physicsServer = new PhysicsServer(this.wss, this.oscClient);
 
     this.wss.on('connection', (ws) => {
       console.log('Client connected');
@@ -193,7 +193,8 @@ class UnifiedServer {
 }
 
 class PhysicsServer {
-  constructor(wss) {
+  constructor(wss, oscClient) {
+    this.oscClient = oscClient;
     this.clients = new Set();
     this.world = this.setupWorld();
     this.bodies = new Map();
@@ -410,9 +411,19 @@ class PhysicsServer {
 
   broadcastWorldState() {
     const worldState = this.getWorldState();
+
+    // Send WebSocket broadcast as before
     this.broadcast({
       type: 'worldState',
       bodies: worldState
+    });
+
+    // Send each body's state via OSC
+    Object.entries(worldState).forEach(([bodyId, state]) => {
+      this.oscClient.send(`/system/${bodyId}/transform`,
+        ...state.position,  // x, y, z position
+        ...state.quaternion // x, y, z, w rotation
+      );
     });
   }
 
@@ -452,6 +463,11 @@ class PhysicsServer {
       position: [body.position.x, body.position.y, body.position.z],
       quaternion: [body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w]
     });
+
+    this.oscClient.send('/body/create',
+      parseInt(body.id),
+      bodyType
+    );
   }
 
   broadcastBodyRemoved(bodyId) {
@@ -459,18 +475,23 @@ class PhysicsServer {
       type: 'bodyRemoved',
       bodyId
     });
+
+    this.oscClient.send('/body/remove', parseInt(bodyId));
   }
 
   broadcastWorldReset() {
     this.broadcast({ type: 'worldReset' });
+    this.oscClient.send('/world/reset');
   }
 
   broadcastPause() {
     this.broadcast({ type: 'pause' });
+    this.oscClient.send('/world/pause');
   }
 
   broadcastResume() {
     this.broadcast({ type: 'resume' });
+    this.oscClient.send('/world/resume');
   }
 
   shutdown() {
