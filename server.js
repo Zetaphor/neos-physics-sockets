@@ -23,6 +23,7 @@ const CONFIG = {
     LISTEN_PORT: 9001
   },
   PHYSICS: {
+    POSITION_SCALE: 0.1,
     FRAME_RATE: 60,
     GRAVITY: -50,
     SLEEP: {
@@ -122,7 +123,7 @@ class UnifiedServer {
     this.physicsServer = new PhysicsServer(this.wss, this.oscClient);
 
     this.wss.on('connection', (ws) => {
-      console.log('Client connected');
+      console.log('Websocket client connected');
       this.physicsServer.addClient(ws);
 
       ws.on('message', (data) => {
@@ -434,9 +435,15 @@ class PhysicsServer {
 
     // Send each body's state via OSC
     Object.entries(worldState).forEach(([bodyId, state]) => {
-      this.oscClient.send(`/system/${bodyId}/transform`,
-        ...state.position,  // x, y, z position
-        ...state.quaternion // x, y, z, w rotation
+
+      this.oscClient.send(`/body/${bodyId}/transform`,
+        parseFloat(state.position[0]) * CONFIG.PHYSICS.POSITION_SCALE,
+        parseFloat(state.position[1]) * CONFIG.PHYSICS.POSITION_SCALE,
+        parseFloat(state.position[2]) * CONFIG.PHYSICS.POSITION_SCALE,
+        parseFloat(state.quaternion[0]),
+        parseFloat(state.quaternion[1]),
+        parseFloat(state.quaternion[2]),
+        parseFloat(state.quaternion[3])
       );
     });
   }
